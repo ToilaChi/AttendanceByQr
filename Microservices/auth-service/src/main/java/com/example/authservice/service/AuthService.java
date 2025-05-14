@@ -91,11 +91,11 @@ public class AuthService {
   @Transactional
   public LogoutResponse logout(LogoutRequest logoutRequest) {
     try {
-      if(logoutRequest.getAccessToken() != null) {
+      if(logoutRequest.getRefreshToken() != null) {
         RefreshToken refreshToken = refreshTokenService.findByToken(logoutRequest.getRefreshToken());
 
-        String accessToken  = logoutRequest.getAccessToken();
-        if(accessToken != null && !accessToken.isEmpty()) {
+        String accessToken = logoutRequest.getAccessToken();
+        if (accessToken != null && !accessToken.isEmpty()) {
           tokenBlackListService.addBlacklistToken(accessToken);
         }
         refreshTokenService.deleteByToken(refreshToken.getToken());

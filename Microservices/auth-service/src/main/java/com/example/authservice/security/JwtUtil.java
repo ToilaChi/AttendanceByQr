@@ -19,7 +19,7 @@ public class JwtUtil {
   private static final long EXPIRATION_TIME = 30 * 60 * 1000;
   private static final long REFRESH_TIME = 604800000;
 
-  public JwtUtil(@Value("${jwt.secret}") String secretKey) {
+  public JwtUtil(@Value("${jwt.secret:LJ8WPZjFNSfnoD5g+JZXSFiQaMY6gfNvBfR8w9HwT9OI0yEg2RfH2t9mpR7C2Ij7}") String secretKey) {
     this.secretKey = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
   }
 
@@ -52,11 +52,11 @@ public class JwtUtil {
             .parseSignedClaims(token)
             .getPayload();
 
-    if(!"Attendance".equals(claims.getSubject())) {
+    if(!"Attendance By QR".equals(claims.getSubject())) {
       throw new JwtException("Token không hợp lệ!!!");
     }
 
-    return claims.get("firstname", String.class);
+    return claims.get("username", String.class);
   }
 
   public String extractRole(String token) {

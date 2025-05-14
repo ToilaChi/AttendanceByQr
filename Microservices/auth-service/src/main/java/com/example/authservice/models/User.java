@@ -1,10 +1,7 @@
 package com.example.authservice.models;
 
 import com.nimbusds.openid.connect.sdk.claims.Gender;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -32,6 +29,7 @@ public class User {
   private String CIC;
 
   @Column
+  @Enumerated(EnumType.STRING)
   private Role role;
 
   @Column
