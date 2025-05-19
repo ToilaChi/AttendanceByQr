@@ -19,14 +19,14 @@ public class JwtUtil {
   private static final long EXPIRATION_TIME = 30 * 60 * 1000;
   private static final long REFRESH_TIME = 604800000;
 
-  public JwtUtil(@Value("${jwt.secret:LJ8WPZjFNSfnoD5g+JZXSFiQaMY6gfNvBfR8w9HwT9OI0yEg2RfH2t9mpR7C2Ij7}") String secretKey) {
+  public JwtUtil(@Value("${jwt.secret}") String secretKey) {
     this.secretKey = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
   }
 
-  public String generateAccessToken(String username, Role role) {
+  public String generateAccessToken(String cic, Role role) {
     return Jwts.builder()
             .subject("Attendance By QR")
-            .claim("username", username)
+            .claim("CIC", cic)
             .claim("role", role)
             .issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
@@ -34,10 +34,10 @@ public class JwtUtil {
             .compact();
   }
 
-  public String generateRefreshToken(String username, Role role) {
+  public String generateRefreshToken(String cic, Role role) {
     return Jwts.builder()
             .subject("Attendance By QR")
-            .claim("username", username)
+            .claim("CIC", cic)
             .claim("role", role)
             .issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + REFRESH_TIME))
@@ -56,7 +56,7 @@ public class JwtUtil {
       throw new JwtException("Token không hợp lệ!!!");
     }
 
-    return claims.get("username", String.class);
+    return claims.get("CIC", String.class);
   }
 
   public String extractRole(String token) {

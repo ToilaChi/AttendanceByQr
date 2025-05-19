@@ -34,7 +34,7 @@ public class JwtFilter extends OncePerRequestFilter {
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
     final String authorizationHeader = request.getHeader("Authorization");
 
-    String username = null;
+    String cic = null;
     String token = null;
 
     logger.debug("Authorization header: " + authorizationHeader);
@@ -51,8 +51,8 @@ public class JwtFilter extends OncePerRequestFilter {
       }
 
       try {
-        username = jwtUtil.validateTokenAndRetrieveSubject(token);
-        logger.debug("UserName: " + username);
+        cic = jwtUtil.validateTokenAndRetrieveSubject(token);
+        logger.debug("CIC: " + cic);
       }
       catch(Exception e) {
         logger.debug("Invalid token: " + token);
@@ -67,9 +67,9 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
     //Nếu có người dùng nhưng chưa được xác thực
-    if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+    if (cic != null && SecurityContextHolder.getContext().getAuthentication() == null) {
       // Load user from db
-      UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+      UserDetails userDetails = userDetailsService.loadUserByUsername(cic);
 
       //Get role
       String role = jwtUtil.extractRole(token);

@@ -34,19 +34,18 @@ public class RefreshTokenService {
     RefreshToken refreshToken = new RefreshToken();
     refreshToken.setUser(user);
 
-    String refreshTokenString = jwtUtil.generateRefreshToken(user.getUsername(), user.getRole());
+    String refreshTokenString = jwtUtil.generateRefreshToken(user.getCIC(), user.getRole());
     refreshToken.setToken(refreshTokenString);
 
     refreshToken.setExpiresAt(Instant.now().plusSeconds(refreshDuration));
     return refreshTokenRepository.save(refreshToken);
   }
 
-  public RefreshToken verifyExpiration(RefreshToken refreshToken) {
+  public void verifyExpiration(RefreshToken refreshToken) {
     if(refreshToken.getExpiresAt().compareTo(Instant.now()) < 0) {
       refreshTokenRepository.delete(refreshToken);
       throw new RuntimeException("Refresh token expired");
     }
-    return refreshToken;
   }
 
   @Transactional

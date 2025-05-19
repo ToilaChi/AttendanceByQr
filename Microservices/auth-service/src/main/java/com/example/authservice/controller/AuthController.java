@@ -44,7 +44,7 @@ public class AuthController {
 
       //Create new accessToken
       User user = refreshToken.getUser();
-      String newAccessToken = jwtUtil.generateAccessToken(user.getUsername(), user.getRole());
+      String newAccessToken = jwtUtil.generateAccessToken(user.getCIC(), user.getRole());
 
       return ResponseEntity.ok(new ApiResponse<>
               ("", new RefreshTokenResponse(refreshToken.getToken(), newAccessToken)));

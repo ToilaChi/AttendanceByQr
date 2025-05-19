@@ -50,7 +50,7 @@ public class AuthService {
         }
 
         //Create accessToken
-        String accessToken = jwtUtil.generateAccessToken(CIC.getUsername(), CIC.getRole());
+        String accessToken = jwtUtil.generateAccessToken(CIC.getCIC(), CIC.getRole());
 
         //Create refreshToken
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(CIC);
