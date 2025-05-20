@@ -12,8 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.Base64;
-
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 

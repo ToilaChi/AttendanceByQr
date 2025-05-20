@@ -22,7 +22,7 @@ public class HeaderAuthenticationFilter implements Filter {
     String role = httpRequest.getHeader("X-User-Role");
 
     if (cic != null && role != null) {
-      System.out.println("🔐 Setting security context from headers - username: " + cic + ", role: " + role);
+      System.out.println("🔐 Setting security context from headers - CIC: " + cic + ", role: " + role);
 
       // Tạo authentication object với thông tin từ header
       UsernamePasswordAuthenticationToken authentication =

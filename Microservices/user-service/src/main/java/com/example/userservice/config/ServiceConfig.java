@@ -1,6 +1,5 @@
 package com.example.userservice.config;
 
-import com.example.userservice.dto.ClassResponse;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
