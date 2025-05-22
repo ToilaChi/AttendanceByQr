@@ -1,6 +1,7 @@
 package com.example.userservice.controller;
 
 import com.example.userservice.dto.StudentResponse;
+import com.example.userservice.dto.UserResponse;
 import com.example.userservice.models.User;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.UserService;
@@ -40,5 +41,12 @@ public class UserController {
 
     ApiResponse<List<StudentResponse>> studentResponseList = userService.getStudentByClassForTeacher(classCode, cic);
     return ResponseEntity.ok(studentResponseList);
+  }
+
+  @GetMapping("/cic/{cic}")
+  public ResponseEntity<ApiResponse<UserResponse>> getUserByCIC(@PathVariable String cic) {
+    ApiResponse<UserResponse> userResponse = userService.getUserByCIC(cic);
+
+    return ResponseEntity.ok(userResponse);
   }
 }

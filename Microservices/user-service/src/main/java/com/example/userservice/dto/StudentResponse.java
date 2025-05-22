@@ -15,5 +15,7 @@ public class StudentResponse {
   private String CIC;
   private String email;
   private String phone;
+  private String gender;
   private Date dateOfBirth;
+  private String regularClassCode;
 }

@@ -5,7 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @AllArgsConstructor
@@ -21,10 +23,19 @@ public class Schedule {
   private String teacherCIC;
 
   @Column(nullable = false)
-  private LocalDateTime dateTime;
+  private Integer day_of_week;
 
   @Column(nullable = false)
-  private int durationMinutes;
+  private LocalTime start_time;
+
+  @Column(nullable = false)
+  private LocalTime end_time;
+
+  @Column(nullable = false)
+  private LocalDate start_date;
+
+  @Column(nullable = false)
+  private LocalDate end_date;
 
   @Column(nullable = false)
   private String room;
