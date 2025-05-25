@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -20,23 +22,21 @@ public class ScheduleController {
   @Autowired
   private ScheduleService scheduleService;
 
-  @GetMapping("/student/{cic}")
-  public ResponseEntity<ApiResponse<List<ScheduleResponse>>> getStudentSchedule
-          (@PathVariable("cic") String studentCIC,
-           @RequestParam(required = false) Integer day,
-           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate date
+  @GetMapping("/student")
+  public ResponseEntity<ApiResponse<List<ScheduleResponse>>> getStudentSchedule(
+           @RequestHeader("X-User-CIC") String studentCIC,
+           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate currentDate
            ){
-    ApiResponse<List<ScheduleResponse>> listApiResponse = scheduleService.getStudentSchedule(studentCIC, day, date);
+    ApiResponse<List<ScheduleResponse>> listApiResponse = scheduleService.getStudentSchedule(studentCIC, currentDate);
     return new ResponseEntity<>(listApiResponse, HttpStatus.OK);
   }
 
-  @GetMapping("/teacher/{cic}")
-  public ResponseEntity<ApiResponse<List<ScheduleResponse>>> getTeacherSchedule
-          (@PathVariable("cic") String teacherCIC,
-           @RequestParam(required = false) Integer day,
-           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate date
+  @GetMapping("/teacher")
+  public ResponseEntity<ApiResponse<List<ScheduleResponse>>> getTeacherSchedule(
+           @RequestHeader("X-User-CIC") String teacherCIC,
+           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate currentDate
           ){
-    ApiResponse<List<ScheduleResponse>> listApiResponse = scheduleService.getTeacherSchedule(teacherCIC, day, date);
+    ApiResponse<List<ScheduleResponse>> listApiResponse = scheduleService.getTeacherSchedule(teacherCIC, currentDate);
     return new ResponseEntity<>(listApiResponse, HttpStatus.OK);
   }
 }

@@ -6,6 +6,7 @@
         <set>
           <option value="X-User-Name" />
           <option value="X-User-Role" />
+          <option value="X-User-CIC" />
         </set>
       </option>
     </inspection_tool>

@@ -7,6 +7,7 @@ import com.example.classservice.util.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -18,49 +19,47 @@ public class ScheduleService {
   private final String[] DAY_NAMES = {"", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"};
 
   public ApiResponse<List<ScheduleResponse>> getStudentSchedule
-          (String studentCIC, Integer day_of_week, LocalDate date) {
-    boolean hasDate = date != null;
-    List<Schedule> studentSchedule = scheduleRepository.findScheduleByStudent(studentCIC, day_of_week, date, hasDate);
+          (String studentCIC, LocalDate currentDate) {
+    //Tính đầu tuần và cuối tuần
+    LocalDate startOfWeek = currentDate.with(DayOfWeek.MONDAY);
+    LocalDate endOfWeek = currentDate.with(DayOfWeek.SUNDAY);
 
-    if (date != null) {
-      // Lấy thứ trong tuần của ngày được chọn
-      int dayOfWeekFromDate = date.getDayOfWeek().getValue();
+    List<Schedule> studentSchedule = scheduleRepository.findScheduleByStudent(studentCIC, startOfWeek, endOfWeek);
 
-      // Lọc lại các lịch học chỉ đúng vào thứ của ngày được chọn
-      studentSchedule = studentSchedule.stream()
-              .filter(schedule -> schedule.getDay_of_week().equals(dayOfWeekFromDate))
-              .toList();
-    }
-
-    List<ScheduleResponse> studentScheduleResponses = studentSchedule.stream()
-            .map(this::convertToScheduleResponse)
+    List<ScheduleResponse> studentScheduleResponseList = studentSchedule.stream()
+            .map(schedule -> convertToScheduleResponse(schedule, currentDate))
+            .sorted((s1, s2) -> {
+              int dayCompare = getDayOfWeekNumber(s1.getDay_of_week()).compareTo(getDayOfWeekNumber(s2.getDay_of_week()));
+              if(dayCompare != 0) return dayCompare;
+              return s1.getStartTime().compareTo(s2.getStartTime());
+            })
             .toList();
 
-    return new ApiResponse<>("Lấy lịch học cho sinh viên thành công!!!", studentScheduleResponses);
+    return new ApiResponse<>("Lấy lịch học cho sinh viên thành công!!!",  studentScheduleResponseList);
   }
 
   public ApiResponse<List<ScheduleResponse>> getTeacherSchedule
-          (String teacherCIC, Integer day_of_week, LocalDate date) {
-    boolean hasDate = date != null;
-    List<Schedule> teacherSchedule = scheduleRepository.findScheduleByTeacher(teacherCIC, day_of_week, date, hasDate);
+          (String teacherCIC, LocalDate currentDate) {
+    LocalDate startOfWeek = currentDate.with(DayOfWeek.MONDAY);
+    LocalDate endOfWeek = currentDate.with(DayOfWeek.SUNDAY);
 
-    if (date != null) {
-      int dayOfWeekFromDate = date.getDayOfWeek().getValue();
+    List<Schedule> teacherSchedule = scheduleRepository.findScheduleByTeacher(teacherCIC, startOfWeek, endOfWeek);
 
-      teacherSchedule = teacherSchedule.stream()
-              .filter(schedule -> schedule.getDay_of_week().equals(dayOfWeekFromDate))
-              .toList();
-    }
-
-    List<ScheduleResponse> teacherScheduleResponses =  teacherSchedule.stream()
-            .map(this::convertToScheduleResponse)
+    List<ScheduleResponse> teacherScheduleResponseList = teacherSchedule.stream()
+            .map(schedule -> convertToScheduleResponse(schedule, currentDate))
+            .sorted((s1, s2) -> {
+              int dayCompare = getDayOfWeekNumber(s1.getDay_of_week()).compareTo(getDayOfWeekNumber( s2.getDay_of_week()));
+              if(dayCompare != 0) return dayCompare;
+              return s1.getStartTime().compareTo(s2.getStartTime());
+            })
             .toList();
 
-    return new ApiResponse<>("Lấy lịch dạy cho giảng viên thành công!!!", teacherScheduleResponses);
+    return new ApiResponse<>("Lấy lịch dạy cho giảng viên thành công!!!", teacherScheduleResponseList);
   }
 
-  private ScheduleResponse convertToScheduleResponse(Schedule schedule) {
+  private ScheduleResponse convertToScheduleResponse(Schedule schedule, LocalDate currentDate) {
     ScheduleResponse scheduleResponse = new ScheduleResponse();
+    scheduleResponse.setScheduleId(Math.toIntExact(schedule.getId()));
     scheduleResponse.setClassCode(schedule.getClassEntity().getClassCode());
     scheduleResponse.setClassName(schedule.getClassEntity().getClassName());
     scheduleResponse.setSubjectName(schedule.getClassEntity().getSubjectName());
@@ -71,11 +70,28 @@ public class ScheduleService {
             DAY_NAMES[dayNumber] : String.valueOf(dayNumber);
     scheduleResponse.setDay_of_week(dayName);
 
+    //Tính ngày học
+    if(dayNumber != null && dayNumber >= 1 && dayNumber <= 7) {
+      LocalDate startDayOfWeek = currentDate.with(DayOfWeek.MONDAY);
+      LocalDate specificDate = startDayOfWeek.plusDays(dayNumber - 1);
+      scheduleResponse.setDate(specificDate.toString());
+    }
+    else {
+      scheduleResponse.setDate(null);
+    }
+
     scheduleResponse.setStartTime(schedule.getStart_time().toString());
     scheduleResponse.setEndTime(schedule.getEnd_time().toString());
-    scheduleResponse.setStartDate(schedule.getStart_date().toString());
-    scheduleResponse.setEndDate(schedule.getEnd_date().toString());
     scheduleResponse.setRoom(schedule.getRoom());
     return scheduleResponse;
+  }
+
+  private Integer getDayOfWeekNumber(String dayName) {
+    for(int i = 0; i < DAY_NAMES.length; i++) {
+      if(DAY_NAMES[i].equals(dayName)) {
+        return i;
+      }
+    }
+    return 0;
   }
 }

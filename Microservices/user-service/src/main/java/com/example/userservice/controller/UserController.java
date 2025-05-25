@@ -43,8 +43,11 @@ public class UserController {
     return ResponseEntity.ok(studentResponseList);
   }
 
-  @GetMapping("/cic/{cic}")
-  public ResponseEntity<ApiResponse<UserResponse>> getUserByCIC(@PathVariable String cic) {
+  @GetMapping("/cic")
+  public ResponseEntity<ApiResponse<UserResponse>> getUserByCIC() {
+    User user = getCurrentUser();
+    String cic = user.getCIC();
+
     ApiResponse<UserResponse> userResponse = userService.getUserByCIC(cic);
 
     return ResponseEntity.ok(userResponse);

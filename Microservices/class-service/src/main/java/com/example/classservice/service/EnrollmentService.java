@@ -1,7 +1,5 @@
 package com.example.classservice.service;
 
-import com.example.classservice.dto.EnrollmentResponse;
-import com.example.classservice.model.Enrollment;
 import com.example.classservice.repository.EnrollmentRepository;
 import com.example.classservice.util.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,5 +17,10 @@ public class EnrollmentService {
     List<String> studentCICs = enrollmentRepository.findStudentCICByClassCode(classCode);
 
     return new ApiResponse<>("Lấy danh sách căn cước của sinh viên thành công!!!", studentCICs);
+  }
+
+  public ApiResponse<Boolean> checkStudentEnrollment(String studentCIC, String classCode){
+    boolean result = enrollmentRepository.existsByStudentCICAndClassCode(studentCIC, classCode);
+    return new ApiResponse<>("Kiểm tra sinh viên có trong lớp đó không",  result);
   }
 }

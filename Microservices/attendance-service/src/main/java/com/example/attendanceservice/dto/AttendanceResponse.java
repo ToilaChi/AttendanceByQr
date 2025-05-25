@@ -1,14 +1,13 @@
-package com.example.classservice.util;
+package com.example.attendanceservice.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ApiResponse<T> {
+public class AttendanceResponse {
   private String message;
-  private T data;
+  private boolean success;
 }

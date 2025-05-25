@@ -10,7 +10,7 @@
         <module name="api-gateway" />
         <module name="eureka-server" />
       </profile>
-      <profile name="Annotation profile for user-service" enabled="true">
+      <profile name="Annotation profile for attendance-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -20,12 +20,14 @@
         <module name="class-service" />
         <module name="auth-service" />
         <module name="user-service" />
+        <module name="attendance-service" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="api-gateway" options="-parameters" />
+      <module name="attendance-service" options="-parameters" />
       <module name="auth-service" options="-parameters" />
       <module name="class-service" options="-parameters" />
       <module name="eureka-server" options="-parameters" />

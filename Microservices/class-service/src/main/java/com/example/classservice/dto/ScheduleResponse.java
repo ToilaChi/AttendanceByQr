@@ -10,13 +10,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ScheduleResponse {
+  private int scheduleId;
   private String classCode;
   private String className;
   private String subjectName;
   private String day_of_week;
   private String startTime;
   private String endTime;
-  private String startDate;
-  private String endDate;
+  private String date;
   private String room;
 }
