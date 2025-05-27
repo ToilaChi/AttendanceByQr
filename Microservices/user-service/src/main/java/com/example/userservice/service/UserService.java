@@ -23,12 +23,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserService {
 
-  private final RestTemplate restTemplate;
   private final UserRepository userRepository;
   private final ClassServiceClient classServiceClient;
-
-  @Value("${class.service.url}")
-  private String classServiceUrl;
 
   public ApiResponse<List<StudentResponse>> getStudentByClassForTeacher(String classCode, String cic) {
     // Gọi đến class-service để lấy thông tin lớp học

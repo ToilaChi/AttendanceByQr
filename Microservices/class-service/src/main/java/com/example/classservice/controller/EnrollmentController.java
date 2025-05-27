@@ -24,7 +24,7 @@ public class EnrollmentController {
 
   @GetMapping("/check")
   public ResponseEntity<ApiResponse<Boolean>> checkStudentEnrollment
-          (@RequestParam String studentCIC,
+          (@RequestHeader("X-User-CIC") String studentCIC,
            @RequestParam String classCode){
     return new ResponseEntity<>(enrollmentService.checkStudentEnrollment(studentCIC, classCode), HttpStatus.OK);
   }

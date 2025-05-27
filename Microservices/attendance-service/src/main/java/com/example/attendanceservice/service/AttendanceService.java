@@ -1,18 +1,18 @@
 package com.example.attendanceservice.service;
 
+import com.example.attendanceservice.client.ClassServiceClient;
 import com.example.attendanceservice.dto.AttendanceRequest;
 import com.example.attendanceservice.dto.AttendanceResponse;
 import com.example.attendanceservice.model.Attendance;
 import com.example.attendanceservice.redis.RedisQrSession;
 import com.example.attendanceservice.redis.RedisService;
 import com.example.attendanceservice.repository.AttendanceRepository;
+import com.example.classservice.util.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 
@@ -21,11 +21,8 @@ import java.time.LocalDateTime;
 public class AttendanceService {
   private final RedisService qrRedisService;
   private final AttendanceRepository attendanceRepository;
-  private final RestTemplate restTemplate;
   private final HttpServletRequest httpServletRequest;
-
-  @Value("${class.service.url}")
-  private String classServiceUrl;
+  private final ClassServiceClient classServiceClient;
 
   @Transactional
   public AttendanceResponse checkIn(AttendanceRequest attendanceRequest) {
@@ -43,10 +40,10 @@ public class AttendanceService {
     String studentCIC =  attendanceRequest.getStudentCIC();
 
     //Gọi class-service để kiểm tra sinh viên
-    String url = classServiceUrl + "?studentCIC=" + studentCIC +  "&classCode=" + qrSession.getClassCode();
     try {
-      ResponseEntity<Boolean> response = restTemplate.getForEntity(url, Boolean.class);
-      if (Boolean.FALSE.equals(response.getBody())) {
+      ResponseEntity<ApiResponse<Boolean>> response = classServiceClient.checkStudentEnrollment(studentCIC, qrSession.getClassCode());
+      ApiResponse<Boolean> body = response.getBody();
+      if (body == null || Boolean.FALSE.equals(body.getData())) {
         return new AttendanceResponse("Bạn không thuộc lớp này!!!", false);
       }
     } catch (Exception e) {

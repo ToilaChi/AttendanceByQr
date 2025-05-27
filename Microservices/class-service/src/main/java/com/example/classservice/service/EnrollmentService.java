@@ -5,7 +5,6 @@ import com.example.classservice.util.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -20,7 +19,16 @@ public class EnrollmentService {
   }
 
   public ApiResponse<Boolean> checkStudentEnrollment(String studentCIC, String classCode){
-    boolean result = enrollmentRepository.existsByStudentCICAndClassCode(studentCIC, classCode);
-    return new ApiResponse<>("Kiểm tra sinh viên có trong lớp đó không",  result);
+    boolean result = isStudentInClass(studentCIC, classCode);
+    if(result){
+      return new ApiResponse<>("Bạn thuộc lớp này", true);
+    }
+    else {
+      return new ApiResponse<>("Bạn không thuộc lớp này", false);
+    }
+  }
+
+  public boolean isStudentInClass(String studentCIC, String classCode) {
+    return enrollmentRepository.existsByStudentCICAndClassCode(studentCIC, classCode);
   }
 }
