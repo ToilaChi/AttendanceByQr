@@ -5,7 +5,7 @@ import com.example.userservice.dto.UserResponse;
 import com.example.userservice.models.User;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.UserService;
-import com.example.userservice.util.ApiResponse;
+import com.example.classservice.util.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

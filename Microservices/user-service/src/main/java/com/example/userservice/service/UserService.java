@@ -1,12 +1,13 @@
 package com.example.userservice.service;
 
-import com.example.userservice.dto.ClassResponse;
+import com.example.userservice.client.ClassServiceClient;
+import com.example.classservice.dto.ClassResponse;
+import com.example.classservice.util.ApiResponse;
 import com.example.userservice.dto.StudentResponse;
 import com.example.userservice.dto.UserResponse;
 import com.example.userservice.models.Role;
 import com.example.userservice.models.User;
 import com.example.userservice.repository.UserRepository;
-import com.example.userservice.util.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -24,6 +25,7 @@ public class UserService {
 
   private final RestTemplate restTemplate;
   private final UserRepository userRepository;
+  private final ClassServiceClient classServiceClient;
 
   @Value("${class.service.url}")
   private String classServiceUrl;
@@ -32,12 +34,7 @@ public class UserService {
     // Gọi đến class-service để lấy thông tin lớp học
     System.out.println("ClassCode: " + classCode);
 
-    ResponseEntity<ApiResponse<ClassResponse>> classResponseEntity = restTemplate.exchange(
-            classServiceUrl + "/classes/" + classCode,
-            HttpMethod.GET,
-            null,
-            new ParameterizedTypeReference<ApiResponse<ClassResponse>>() {}
-    );
+    ResponseEntity<ApiResponse<ClassResponse>> classResponseEntity = classServiceClient.getClassByCode(classCode);
 
     ClassResponse classResponse = classResponseEntity.getBody() != null
             ? classResponseEntity.getBody().getData()
@@ -47,19 +44,14 @@ public class UserService {
       throw new SecurityException("Access denied: Bạn không dạy lớp này!!!");
     }
 
-    ResponseEntity<ApiResponse<List<String>>> studentCICResponseEntity = restTemplate.exchange(
-            classServiceUrl + "/enrollments/class/" + classCode,
-            HttpMethod.GET,
-            null,
-            new ParameterizedTypeReference<ApiResponse<List<String>>>() {}
-    );
+    ResponseEntity<ApiResponse<List<String>>> studentCICResponseEntity = classServiceClient.getStudentCICByClassCode(classCode);
 
     List<String> studentCICs = studentCICResponseEntity.getBody() != null
             ? studentCICResponseEntity.getBody().getData()
             : Collections.emptyList();
 
     if (studentCICs.isEmpty()) {
-      return new ApiResponse<>("Lớp không có sinh viên nào!");
+      return new ApiResponse<>("Lớp không có sinh viên nào!", null);
     }
 
     List<User> students = userRepository.findByCICInAndRole(studentCICs, Role.STUDENT);
