@@ -16,11 +16,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
   @Autowired
   private UserRepository userRepository;
 
-  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    com.example.authservice.models.User user = userRepository.findByUsername(username);
+  public UserDetails loadUserByUsername(String cic) throws UsernameNotFoundException {
+    com.example.authservice.models.User user = userRepository.findByCIC(cic);
     if (user == null) {
-      throw new UsernameNotFoundException("User not found with username: " + username);
+      throw new UsernameNotFoundException("User not found with username: " + cic);
     }
-    return new User(user.getUsername(), user.getPassword(), new ArrayList<>());
+    return new User(user.getCIC(), user.getPassword(), new ArrayList<>());
   }
 }

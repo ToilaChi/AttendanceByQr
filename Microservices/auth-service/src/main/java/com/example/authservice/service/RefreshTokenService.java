@@ -41,11 +41,12 @@ public class RefreshTokenService {
     return refreshTokenRepository.save(refreshToken);
   }
 
-  public void verifyExpiration(RefreshToken refreshToken) {
-    if(refreshToken.getExpiresAt().compareTo(Instant.now()) < 0) {
-      refreshTokenRepository.delete(refreshToken);
-      throw new RuntimeException("Refresh token expired");
+  public RefreshToken verifyExpiration(RefreshToken token) {
+    if(token.getExpiresAt().compareTo(Instant.now()) < 0) {
+      refreshTokenRepository.delete(token);
+      throw new RuntimeException("Refresh token was expired. Please login again.");
     }
+    return token;
   }
 
   @Transactional

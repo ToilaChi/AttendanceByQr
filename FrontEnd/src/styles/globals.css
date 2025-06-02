@@ -1,0 +1,133 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* UTH Color Scheme */
+:root {
+  --uth-primary: #2E9688;
+  --uth-secondary: #E53E3E;
+  --uth-light-gray: #F7FAFC;
+  --uth-dark-gray: #2D3748;
+  --uth-border: #E2E8F0;
+  --uth-text: #4A5568;
+  --uth-success: #38A169;
+  --uth-warning: #DD6B20;
+  --uth-error: #E53E3E;
+}
+
+/* Button Styles */
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn-primary {
+  background-color: var(--uth-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #26857a;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: var(--uth-secondary);
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #c53c3c;
+}
+
+/* Input Styles */
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--uth-border);
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+  background-color: white;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--uth-primary);
+}
+
+.form-input::placeholder {
+  color: #A0AEC0;
+}
+
+/* Card Styles */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--uth-border);
+}
+
+.card-body {
+  padding: 24px;
+}
+
+/* Loading Spinner */
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--uth-primary);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  
+  .form-input {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+}

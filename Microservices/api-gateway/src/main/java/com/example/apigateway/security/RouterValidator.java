@@ -12,7 +12,7 @@ public class RouterValidator {
   private static final List<String> openEndpoints = List.of(
           "/auth/login",
           "/auth/logout",
-          "/auth/refresh",
+          "/auth/refresh-token",
           "/eureka"
   );
 
