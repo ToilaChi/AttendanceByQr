@@ -7,6 +7,7 @@ import ProtectedRoute from '../components/common/ProtectedRoute';
 import LoginPage from '../pages/LoginPage';
 import Dashboard from '../pages/Dashboard';
 import Schedule from '../pages/Schedule';
+import QRDisplayPage from '../pages/QRDisplayPage';
 
 const AppRouter = () => {
   return (
@@ -31,6 +32,16 @@ const AppRouter = () => {
             element={
               <ProtectedRoute>
                 <Schedule />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* QR Display Route - Protected route for teachers only */}
+          <Route
+            path="/qr-display"
+            element={
+              <ProtectedRoute>
+                <QRDisplayPage />
               </ProtectedRoute>
             }
           />

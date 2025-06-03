@@ -46,6 +46,7 @@ public class QrService {
     LocalDate today =  LocalDate.now();
     ApiResponse<List<ScheduleResponse>> response = classServiceClient.getTeacherSchedule(teacherCIC,  today);
 
+    System.out.println("Finding schedule for teacherCIC: " + teacherCIC + " on date: " + today);
     List<ScheduleResponse> scheduleResponse = response.getData();
     if(scheduleResponse.isEmpty()){
       throw new BadRequestException("Không tìm thấy lịch dạy hôm nay");
@@ -57,11 +58,12 @@ public class QrService {
       throw new BadRequestException("Không tìm thấy lịch dạy phù hợp");
     }
 
+    System.out.println("Target schedule found: " + targetSchedule.getSubjectName() + " - " + targetSchedule.getClassCode());
     validateScheduleTime(targetSchedule);
 
     String qrSignature = UUID.randomUUID().toString();
     long ttlSeconds = calculateTTL(targetSchedule);
-
+    System.out.println("Calculated TTL (seconds): " + ttlSeconds);
     RedisQrSession redisQrSession = RedisQrSession.builder()
             .qrSignature(qrSignature)
             .scheduleId(targetSchedule.getScheduleId())
@@ -77,7 +79,10 @@ public class QrService {
 
     String qrImageBase64 = generateQrImage(qrContent);
 
-    return new QrGenerateResponse(qrSignature, System.currentTimeMillis() + ttlSeconds * 1000, qrImageBase64, qrContent);
+    long expirationTimestamp = System.currentTimeMillis() + ttlSeconds * 1000;
+    System.out.println("QR Expiration Timestamp: " + expirationTimestamp + " (Date: " + new Date(expirationTimestamp) + ")"); // Log expiration time
+
+    return new QrGenerateResponse(qrSignature, expirationTimestamp, qrImageBase64, qrContent);
   }
 
   private ScheduleResponse findCurrentSchedule(List<ScheduleResponse> schedules) {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/api';
-import '../styles/Schedule.css'; 
+import { openQRTab, canGenerateQR } from '../utils/qrUtils';
+import '../styles/Schedule.css';
 import Header from '../components/layout/Header';
 
 const Schedule = () => {
@@ -10,12 +11,8 @@ const Schedule = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  
-  // ✅ FIX 1: Sử dụng ref để track API calls và prevent duplicate calls
-  const isLoadingRef = useRef(false);
-  const lastFetchedRef = useRef('');
+  const [qrGenerating, setQrGenerating] = useState(false);
 
-  // ✅ FIX 2: Memoize user role để tránh re-render không cần thiết
   const userRole = useMemo(() => user.data?.role, [user.data?.role]);
 
   // Format date to YYYY-MM-DD
@@ -23,14 +20,12 @@ const Schedule = () => {
     return date.toISOString().split('T')[0];
   }, []);
 
-  // ✅ FIX 3: Memoize formatted current date
   const formattedCurrentDate = useMemo(() => formatDate(currentDate), [currentDate, formatDate]);
 
   // Get week dates based on current date
   const getWeekDates = useCallback((date) => {
     const currentDay = date.getDay();
     const monday = new Date(date);
-    // Adjust to Monday (day 1)
     monday.setDate(date.getDate() - currentDay + 1);
 
     const weekDates = [];
@@ -49,25 +44,13 @@ const Schedule = () => {
 
   // Time slots for the schedule
   const timeSlots = [
-    { label: 'Sáng', periods: ['07:00 - 08:30', '8:30 - 10:00', '10:00 - 11:30'] },
-    { label: 'Chiều', periods: ['13:00 - 14:30', '14:30 - 16:00', '16:00 - 17:30'] },
-    { label: 'Tối', periods: ['18:00 - 19:30', '19:30 - 21:00', '21:00 - 22:30'] }
+    { label: 'Sáng', periods: ['07:00 - 08:30', '8:30 - 10:00', '10:00 - 11:30', '11:30 - 13:00'] },
+    { label: 'Chiều', periods: ['13:00 - 14:30', '14:30 - 16:00', '16:00 - 17:30', '16:30 - 18:00'] },
+    { label: 'Tối', periods: ['18:00 - 19:30', '19:30 - 21:00', '21:00 - 22:30', '22:30 - 23:30'] }
   ];
 
-  // ✅ FIX 4: Enhanced fetchSchedule with duplicate call prevention
+  // Fetch schedule data
   const fetchSchedule = useCallback(async (date) => {
-    const dateKey = `${userRole}-${formatDate(date)}`;
-    
-    // Prevent duplicate calls for same date and role
-    if (isLoadingRef.current || lastFetchedRef.current === dateKey) {
-      console.log('🚫 Prevented duplicate API call for:', dateKey);
-      return;
-    }
-
-    console.log('📞 Making API call for:', dateKey);
-    isLoadingRef.current = true;
-    lastFetchedRef.current = dateKey;
-    
     setLoading(true);
     setError(null);
 
@@ -84,57 +67,62 @@ const Schedule = () => {
       console.error('Error fetching schedule:', err);
       setError('Không thể tải lịch học. Vui lòng thử lại.');
       setScheduleData([]);
-      // Reset lastFetched on error to allow retry
-      lastFetchedRef.current = '';
     } finally {
       setLoading(false);
-      isLoadingRef.current = false;
     }
   }, [userRole, formatDate]);
 
-  // ✅ FIX 5: Optimized useEffect with stable dependencies
+  // Handle QR Generation - Simplified without class info
+  const handleGenerateQR = useCallback(async (classInfo) => {
+    console.log('handleGenerateQR called at:', new Date().toISOString());
+    if (qrGenerating) {
+      console.log('QR generation already in progress.');
+      return;
+    }
+    try {
+      setQrGenerating(true);
+
+      // Kiểm tra xem có thể tạo QR không
+      const qrCheck = canGenerateQR(classInfo.startTime, classInfo.endTime, classInfo.date);
+      if (!qrCheck.canGenerate) {
+        alert(qrCheck.reason);
+        setQrGenerating(false);
+        return;
+      }
+
+      // Mở tab QR đơn giản không cần truyền class info
+      const qrTab = openQRTab();
+
+      if (!qrTab) {
+        alert('Không thể mở cửa sổ mới. Vui lòng kiểm tra cài đặt trình duyệt.');
+        setQrGenerating(false);
+        return;
+      }
+
+      console.log('✅ QR tab opened successfully');
+
+    } catch (error) {
+      console.error('Error generating QR:', error);
+      alert('Có lỗi xảy ra khi mở tab QR code. Vui lòng thử lại.');
+    } finally {
+      setQrGenerating(false);
+    }
+  }, []);
+
+  // Fetch schedule when date or role changes
   useEffect(() => {
     if (userRole && formattedCurrentDate) {
       fetchSchedule(currentDate);
     }
   }, [userRole, formattedCurrentDate, fetchSchedule, currentDate]);
 
-  // ✅ FIX 6: Debounced date change to prevent rapid calls
-  const [dateChangeTimeout, setDateChangeTimeout] = useState(null);
-  
-  const handleDateChange = useCallback((newDate) => {
-    // Clear existing timeout
-    if (dateChangeTimeout) {
-      clearTimeout(dateChangeTimeout);
-    }
-    
-    // Set new timeout to debounce date changes
-    const timeout = setTimeout(() => {
-      setCurrentDate(newDate);
-      // Reset lastFetched when user manually changes date
-      lastFetchedRef.current = '';
-    }, 150);
-    
-    setDateChangeTimeout(timeout);
-  }, [dateChangeTimeout]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (dateChangeTimeout) {
-        clearTimeout(dateChangeTimeout);
-      }
-    };
-  }, [dateChangeTimeout]);
-
   // Navigate to previous/next week
   const navigateWeek = useCallback((direction) => {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + (direction * 7));
-    handleDateChange(newDate);
-  }, [currentDate, handleDateChange]);
+    setCurrentDate(newDate);
+  }, [currentDate]);
 
-  // ✅ FIX 7: Memoized functions to prevent unnecessary re-renders
   const getClassForSlot = useCallback((dayIndex, timeRange) => {
     const targetDate = weekDates[dayIndex];
     const targetDateStr = formatDate(targetDate);
@@ -144,12 +132,16 @@ const Schedule = () => {
 
       const scheduleStart = schedule.startTime;
       const scheduleEnd = schedule.endTime;
-
       const [rangeStart, rangeEnd] = timeRange.split(' - ');
 
       return scheduleStart >= rangeStart && scheduleEnd <= rangeEnd;
     });
   }, [weekDates, scheduleData, formatDate]);
+
+  const canGenerateQRForClass = useCallback((classInfo) => {
+    if (!classInfo) return false;
+    return canGenerateQR(classInfo.startTime, classInfo.endTime, classInfo.date).canGenerate;
+  }, []);
 
   // Render schedule cell
   const renderScheduleCell = useCallback((dayIndex, timeRange) => {
@@ -159,23 +151,38 @@ const Schedule = () => {
       return <div className="schedule-cell empty"></div>;
     }
 
+    const canGenerate = canGenerateQRForClass(classInfo);
+
     return (
       <div className="schedule-cell filled">
         <div className="class-info">
           <div className="subject-name">{classInfo.subjectName}</div>
           <div className="class-code">Mã lớp: {classInfo.classCode}</div>
           <div className="class-details">
-            <div className="time">Thời gian: {classInfo.startTime} - {classInfo.endTime}</div>
             <div className="room">Phòng: {classInfo.room}</div>
-            {userRole === 'STUDENT' ? 
-              <div className="attendance-link">Điểm danh</div> : 
-              <div className="attendance-link">Tạo QR điểm danh</div>
-            }
+            <div className="time">Thời gian: {classInfo.startTime} - {classInfo.endTime}</div>
+
+            {userRole === 'TEACHER' ? (
+              <button
+                className={`qr-button ${canGenerate && !qrGenerating ? 'active' : 'disabled'}`}
+                onClick={() => canGenerate && !qrGenerating && handleGenerateQR(classInfo)}
+                disabled={!canGenerate || qrGenerating}
+                title={
+                  !canGenerate
+                    ? canGenerateQR(classInfo.startTime, classInfo.endTime, classInfo.date).reason
+                    : 'Tạo QR code điểm danh'
+                }
+              >
+                {qrGenerating ? '⏳ Đang tạo...' : '📱 Tạo QR'}
+              </button>
+            ) : (
+              <div className="attendance-link">📍 Điểm danh</div>
+            )}
           </div>
         </div>
       </div>
     );
-  }, [getClassForSlot, userRole]);
+  }, [getClassForSlot, userRole, canGenerateQRForClass, handleGenerateQR, qrGenerating]);
 
   const today = new Date();
   const todayStr = formatDate(today);
@@ -190,7 +197,7 @@ const Schedule = () => {
             <input
               type="date"
               value={formattedCurrentDate}
-              onChange={(e) => handleDateChange(new Date(e.target.value))}
+              onChange={(e) => setCurrentDate(new Date(e.target.value))}
               className="date-input"
             />
           </div>
@@ -206,7 +213,7 @@ const Schedule = () => {
             </button>
             <button
               className="nav-button today"
-              onClick={() => handleDateChange(new Date())}
+              onClick={() => setCurrentDate(new Date())}
               disabled={loading}
             >
               HIỆN TẠI
@@ -222,14 +229,12 @@ const Schedule = () => {
           </div>
         </div>
 
-        {/* Loading indicator */}
         {loading && (
           <div className="loading-indicator">
             Đang tải lịch học...
           </div>
         )}
 
-        {/* Error message */}
         {error && (
           <div className="error-message">
             {error}
