@@ -29,10 +29,17 @@ public class SecurityConfig {
   public CorsWebFilter corsWebFilter() {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowCredentials(true);
-    config.addAllowedOrigin("http://localhost:5173");
+    config.setAllowedOriginPatterns(List.of(
+            "http://localhost:5173",
+            "http://192.168.1.7:5173",
+            "http://192.168.161.1:5173",
+            "http://192.168.174.1:5173"
+    ));
     config.addAllowedOrigin(String.valueOf(List.of(
             "http://localhost:5173",
-            "http://192.168.1.7:5173"
+            "http://192.168.1.7:5173",
+            "http://192.168.161.1:5173",
+            "http://192.168.174.1:5173"
     )));
     config.addAllowedHeader("*");
     config.addAllowedMethod("*");
