@@ -31,7 +31,6 @@ const LoginPage = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -52,7 +51,7 @@ const LoginPage = () => {
     }
   };
 
-  // Show loading screen while checking auth status
+  // Show màn hình loading nếu đang kiểm tra authentication
   if (authLoading) {
     return (
       <div className="login-container">
@@ -128,7 +127,11 @@ const LoginPage = () => {
                 disabled={loading}
                 aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                {showPassword ? (
+                  <span style={{ fontSize: '1.2em' }}>👁️‍🗨️</span>
+                ) : (
+                  <span style={{ fontSize: '0.8em' }}>👁️</span>
+                )}
               </button>
             </div>
 

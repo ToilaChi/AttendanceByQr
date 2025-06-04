@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { authService } from '../services/authService';
 
 const AuthContext = createContext();
@@ -15,81 +15,97 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const effectRan = useRef(false);
 
   useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        console.log('AuthContext: Fetching user data after token validation/refresh.');
+        const rawUserData = await authService.getCurrentUser();
+        const userDataToSet = rawUserData?.data || rawUserData;
+        setUser(userDataToSet);
+      } catch (fetchError) {
+        console.error('AuthContext: Failed to fetch user data:', fetchError);
+        throw fetchError;
+      }
+    };
+
     const initializeAuth = async () => {
       setLoading(true);
 
       try {
         const accessToken = localStorage.getItem('accessToken');
         const refreshToken = localStorage.getItem('refreshToken');
-        const storedUser = localStorage.getItem('user');
+        const storedUserJson = localStorage.getItem('user');
 
-        if (refreshToken) {
-          // Nếu có accessToken và còn hạn → dùng
-          if (accessToken && authService.isTokenValid()) {
-            if (storedUser) {
-              try {
-                const userData = JSON.parse(storedUser);
-                setUser(userData);
-              } catch (parseError) {
-                console.error('AuthContext: Error parsing stored user data:', parseError);
-                localStorage.removeItem('user');
-                await fetchUserData();
-              }
-            } else {
-              console.log('AuthContext: No stored user, fetching from API');
+        if (accessToken && authService.isTokenValid()) {
+          if (storedUserJson) {
+            try {
+              setUser(JSON.parse(storedUserJson));
+            } catch (parseError) {
+              console.error('AuthContext: Error parsing stored user, fetching from API.', parseError);
+              localStorage.removeItem('user');
               await fetchUserData();
             }
           } else {
-            // Không có accessToken hoặc hết hạn → cố gắng refresh
-            console.log('AuthContext: Access token missing/expired, attempting refresh...');
-            try {
-              await authService.refreshToken();
-              await fetchUserData();
-            } catch (refreshError) {
-              console.log('AuthContext: Refresh failed, clearing auth data');
-              await logout();
-            }
+            await fetchUserData();
+          }
+        } else if (refreshToken) {
+          try {
+            await authService.refreshToken();
+            await fetchUserData();
+          } catch (refreshError) {
+            console.error('AuthContext: Refresh token failed.', refreshError);
+            await authService.logout();
+            setUser(null);
           }
         } else {
-          console.log('AuthContext: No refresh token available. User not authenticated.');
+          console.log('AuthContext: No tokens found. User is not authenticated.');
+          setUser(null);
         }
       } catch (err) {
-        console.error('AuthContext: Initialize error:', err);
-        await logout();
+        console.error('AuthContext: Critical error during initialization:', err);
+        await authService.logout();
+        setUser(null);
       } finally {
         setLoading(false);
-        console.log('AuthContext: Auth initialization complete');
+        console.log('AuthContext: Auth initialization process complete.');
       }
     };
 
-    const fetchUserData = async () => {
-      try {
-        const raw = await authService.getCurrentUser();
-        const userData = raw?.data || raw; 
-        setUser(userData);
-      } catch (fetchError) {
-        console.error('AuthContext: Failed to fetch user data:', fetchError);
-        await logout();
+    // Chỉ chạy effect một lần trong môi trường development, giống như môi trường production
+    // Để tránh gọi lại khi hot reload xảy ra
+    if (process.env.NODE_ENV === 'development') {
+      if (effectRan.current === true) {
+        initializeAuth();
       }
-    };
+      return () => {
+        effectRan.current = true;
+      };
+    } else {
+      initializeAuth();
+    }
 
-    initializeAuth();
+    // Dọn dẹp khi component unmount
+    return () => {
+    };
   }, []);
 
   const login = async (credentials) => {
+    setLoading(true);
+    setError(null);
     try {
-      setError(null);
-      setLoading(true);
-
       const response = await authService.login(credentials);
-
       setUser(response.user);
       return response;
     } catch (err) {
       const errorMessage = err.message || 'Đăng nhập thất bại';
+      console.error('AuthContext: Login failed:', errorMessage);
       setError(errorMessage);
+      setUser(null);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
       throw err;
     } finally {
       setLoading(false);
@@ -97,11 +113,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       await authService.logout();
     } catch (err) {
-      console.error('AuthContext: Logout error:', err);
+      console.error('AuthContext: Error during API logout (non-critical):', err);
     } finally {
       setUser(null);
       setError(null);
@@ -109,13 +125,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const isAuthenticated = !!user && !!localStorage.getItem('accessToken') && authService.isTokenValid();
+
   const value = {
     user,
     error,
     loading,
+    isAuthenticated,
     login,
     logout,
-    isAuthenticated: !!user && !!localStorage.getItem('accessToken')
   };
 
   return (

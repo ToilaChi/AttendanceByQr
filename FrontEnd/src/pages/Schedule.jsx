@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/api';
 import { openQRTab, canGenerateQR } from '../utils/qrUtils';
@@ -12,8 +12,13 @@ const Schedule = () => {
   const [error, setError] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [qrGenerating, setQrGenerating] = useState(false);
+  
+  // Refs để prevent duplicate calls
+  const fetchingRef = useRef(false);
+  const lastFetchedDate = useRef(null);
+  const lastFetchedRole = useRef(null);
 
-  const userRole = useMemo(() => user.data?.role, [user.data?.role]);
+  const userRole = useMemo(() => user?.data?.role || user?.role, [user]);
 
   // Format date to YYYY-MM-DD
   const formatDate = useCallback((date) => {
@@ -22,9 +27,9 @@ const Schedule = () => {
 
   const formattedCurrentDate = useMemo(() => formatDate(currentDate), [currentDate, formatDate]);
 
-  // Get week dates based on current date
+  // Get tuần hiện tại dựa trên current date 
   const getWeekDates = useCallback((date) => {
-    const currentDay = date.getDay();
+    const currentDay = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     const monday = new Date(date);
     monday.setDate(date.getDate() - currentDay + 1);
 
@@ -44,41 +49,58 @@ const Schedule = () => {
 
   // Time slots for the schedule
   const timeSlots = [
-    { label: 'Sáng', periods: ['07:00 - 08:30', '8:30 - 10:00', '10:00 - 11:30', '11:30 - 13:00'] },
-    { label: 'Chiều', periods: ['13:00 - 14:30', '14:30 - 16:00', '16:00 - 17:30', '16:30 - 18:00'] },
-    { label: 'Tối', periods: ['18:00 - 19:30', '19:30 - 21:00', '21:00 - 22:30', '22:30 - 23:30'] }
+    { label: 'Sáng', periods: ['06:45 - 09:15', '09:25 - 11:55'] },
+    { label: 'Chiều', periods: ['14:50 - 17:20', '12:10 - 14:40'] },
+    { label: 'Tối', periods: ['17:30 - 20:00'] }
   ];
 
-  // Fetch schedule data
+  // Optimized hàm gọi lịch và tránh duplicate calls
   const fetchSchedule = useCallback(async (date) => {
+    const dateStr = formatDate(date);
+    
+    // Prevent duplicate calls
+    if (fetchingRef.current || 
+        (lastFetchedDate.current === dateStr && lastFetchedRole.current === userRole)) {
+      return;
+    }
+
+    if (!userRole) {
+      return;
+    }
+
+    fetchingRef.current = true;
     setLoading(true);
     setError(null);
 
     try {
       const endpoint = userRole === 'TEACHER' ? '/schedules/teacher' : '/schedules/student';
-      const response = await api.get(`${endpoint}?currentDate=${formatDate(date)}`);
+      const response = await api.get(`${endpoint}?currentDate=${dateStr}`);
 
       if (response.data && response.data.data) {
         setScheduleData(response.data.data);
+        lastFetchedDate.current = dateStr;
+        lastFetchedRole.current = userRole;
       } else {
         setScheduleData([]);
+        lastFetchedDate.current = dateStr;
+        lastFetchedRole.current = userRole;
       }
     } catch (err) {
-      console.error('Error fetching schedule:', err);
+      console.error('Schedule.jsx: Error fetching schedule:', err);
       setError('Không thể tải lịch học. Vui lòng thử lại.');
       setScheduleData([]);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, [userRole, formatDate]);
 
-  // Handle QR Generation - Simplified without class info
+  // Generate QR code
   const handleGenerateQR = useCallback(async (classInfo) => {
-    console.log('handleGenerateQR called at:', new Date().toISOString());
     if (qrGenerating) {
-      console.log('QR generation already in progress.');
       return;
     }
+
     try {
       setQrGenerating(true);
 
@@ -86,34 +108,39 @@ const Schedule = () => {
       const qrCheck = canGenerateQR(classInfo.startTime, classInfo.endTime, classInfo.date);
       if (!qrCheck.canGenerate) {
         alert(qrCheck.reason);
-        setQrGenerating(false);
         return;
       }
 
-      // Mở tab QR đơn giản không cần truyền class info
+      // Mở tab QR
       const qrTab = openQRTab();
 
       if (!qrTab) {
         alert('Không thể mở cửa sổ mới. Vui lòng kiểm tra cài đặt trình duyệt.');
-        setQrGenerating(false);
         return;
       }
 
-      console.log('✅ QR tab opened successfully');
-
     } catch (error) {
-      console.error('Error generating QR:', error);
+      console.error('Schedule.jsx: Error generating QR:', error);
       alert('Có lỗi xảy ra khi mở tab QR code. Vui lòng thử lại.');
     } finally {
       setQrGenerating(false);
     }
-  }, []);
+  }, [qrGenerating]);
 
-  // Fetch schedule when date or role changes
   useEffect(() => {
-    if (userRole && formattedCurrentDate) {
-      fetchSchedule(currentDate);
-    }
+    let isMounted = true;
+
+    const initiateFetch = async () => {
+      if (isMounted && userRole && formattedCurrentDate) {
+        await fetchSchedule(currentDate);
+      }
+    };
+
+    initiateFetch();
+
+    return () => {
+      isMounted = false;
+    };
   }, [userRole, formattedCurrentDate, fetchSchedule, currentDate]);
 
   // Navigate to previous/next week
@@ -121,7 +148,18 @@ const Schedule = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + (direction * 7));
     setCurrentDate(newDate);
+    
+    // Reset fetch cache when navigating
+    lastFetchedDate.current = null;
+    lastFetchedRole.current = null;
   }, [currentDate]);
+
+  // Refresh schedule
+  const refreshSchedule = useCallback(() => {
+    lastFetchedDate.current = null;
+    lastFetchedRole.current = null;
+    fetchSchedule(currentDate);
+  }, [currentDate, fetchSchedule]);
 
   const getClassForSlot = useCallback((dayIndex, timeRange) => {
     const targetDate = weekDates[dayIndex];
@@ -226,6 +264,14 @@ const Schedule = () => {
             >
               →
             </button>
+            <button
+              className="nav-button refresh"
+              onClick={refreshSchedule}
+              disabled={loading}
+              title="Làm mới"
+            >
+              🔄
+            </button>
           </div>
         </div>
 
@@ -238,6 +284,9 @@ const Schedule = () => {
         {error && (
           <div className="error-message">
             {error}
+            <button onClick={refreshSchedule} className="retry-button">
+              Thử lại
+            </button>
           </div>
         )}
 
