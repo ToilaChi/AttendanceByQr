@@ -31,6 +31,8 @@ const QRDisplayPage = () => {
       const response = await api.post('/qr/generate');
       
       if (response.data) {
+        const expiredTime = response.data.expiredTime || response.data.expirationTime;
+
         if (expiredTime && typeof expiredTime === 'number') {
           const qrDataWithTime = {
             ...response.data,

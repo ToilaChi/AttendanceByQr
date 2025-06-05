@@ -1,6 +1,7 @@
 package com.example.attendanceservice.service;
 
 import com.example.attendanceservice.client.ClassServiceClient;
+import com.example.attendanceservice.dto.AttendanceEvent;
 import com.example.attendanceservice.dto.AttendanceRequest;
 import com.example.attendanceservice.dto.AttendanceResponse;
 import com.example.attendanceservice.model.Attendance;
@@ -23,37 +24,72 @@ public class AttendanceService {
   private final AttendanceRepository attendanceRepository;
   private final HttpServletRequest httpServletRequest;
   private final ClassServiceClient classServiceClient;
+  private final NatsPublisherService natsPublisherService;
 
   @Transactional
   public AttendanceResponse checkIn(AttendanceRequest attendanceRequest) {
+    String studentCIC =  attendanceRequest.getStudentCIC();
+    LocalDateTime now = LocalDateTime.now();
     // Lấy qr từ redis
     RedisQrSession qrSession = qrRedisService.getQrSession(attendanceRequest.getQrSignature());
     if (qrSession == null) {
-      return new AttendanceResponse("QR session không tồn tại hoặc đã hết hạn", false);
+      String message = "QR session không tồn tại hoặc đã hết hạn";
+      //Publish failed event
+      AttendanceEvent failedEvent = new AttendanceEvent(
+              studentCIC, null, null, now, message
+      );
+      natsPublisherService.publishAttendanceFailed(failedEvent);
+      return new AttendanceResponse(message, false);
     }
-    LocalDateTime now = LocalDateTime.now();
 
     if(now.isBefore(qrSession.getStartTime()) || now.isAfter(qrSession.getEndTime())) {
-      return new AttendanceResponse("QR session không còn hiệu lực", false);
+      String message = "QR session không còn hiệu lực";
+      //Publish failed event
+      AttendanceEvent failedEvent = new AttendanceEvent(
+              studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now, message
+      );
+      natsPublisherService.publishAttendanceFailed(failedEvent);
+      return new AttendanceResponse(message, false);
     }
-
-    String studentCIC =  attendanceRequest.getStudentCIC();
 
     //Gọi class-service để kiểm tra sinh viên
     try {
+      System.out.println("Class Code 0: "  + qrSession.getClassCode());
       ResponseEntity<ApiResponse<Boolean>> response = classServiceClient.checkStudentEnrollment(studentCIC, qrSession.getClassCode());
       ApiResponse<Boolean> body = response.getBody();
+      System.out.println("Response: " + response);
+      System.out.println("Body: " + body);
       if (body == null || Boolean.FALSE.equals(body.getData())) {
-        return new AttendanceResponse("Bạn không thuộc lớp này!!!", false);
+        System.out.println("Class Code 1: "  + qrSession.getClassCode());
+        String message = "Bạn không thuộc lớp này!!!";
+        //Publish failed event
+        AttendanceEvent failedEvent = new AttendanceEvent(
+                studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now, message
+        );
+        natsPublisherService.publishAttendanceFailed(failedEvent);
+        return new AttendanceResponse(message, false);
       }
     } catch (Exception e) {
-      return new AttendanceResponse("Không thể kiểm tra lớp học. Vui lòng thử lại sau.", false);
+      System.out.println("Class Code 2: "  + qrSession.getClassCode());
+      String message = "Không thể kiểm tra lớp học. Vui lòng thử lại sau.";
+      //Publish failed event
+      AttendanceEvent failedEvent = new AttendanceEvent(
+              studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now, message
+      );
+      natsPublisherService.publishAttendanceFailed(failedEvent);
+      return new AttendanceResponse(message, false);
     }
 
     //Kiểm tra xem có điểm danh 2 lần không
     boolean alreadyCheckIn = attendanceRepository.existsByStudentCICAndScheduleId(studentCIC, qrSession.getScheduleId());
     if(alreadyCheckIn) {
-      return new AttendanceResponse("Bạn đã điểm danh trước đó rồi", false);
+      String message = "Bạn đã điểm danh trước đó rồi";
+      //Publish failed event
+      AttendanceEvent failedEvent = new AttendanceEvent(
+              studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now, message
+      );
+      natsPublisherService.publishAttendanceFailed(failedEvent);
+      return new AttendanceResponse(message, false);
     }
 
     //Lấy ip client
@@ -70,9 +106,16 @@ public class AttendanceService {
 
     attendanceRepository.save(attendance);
 
-    //Sau này ứng dụng NATS vào đây để thông báo
+    // Publish success event
+    String successMessage = "Bạn đã điểm danh thành công!!!";
+    AttendanceEvent successEvent = new AttendanceEvent(
+            studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now,
+            successMessage, ipAddress, attendanceRequest.getDeviceInfo(),
+            attendanceRequest.getLatitude(), attendanceRequest.getLongtitude()
+    );
+    natsPublisherService.publishAttendanceSuccess(successEvent);
 
-    return new AttendanceResponse("Bạn đã điểm danh thành công!!!", true);
+    return new AttendanceResponse(successMessage, true);
   }
 
   private String extractClientIp() {
