@@ -65,7 +65,8 @@ public class AttendanceService {
     attendance.setTimestamp(now);
     attendance.setIpAddress(ipAddress);
     attendance.setDeviceInfo(attendanceRequest.getDeviceInfo());
-    attendance.setLocationInfo(attendanceRequest.getLocationInfo());
+    attendance.setLatitude(attendanceRequest.getLatitude());
+    attendance.setLongtitude(attendanceRequest.getLongtitude());
 
     attendanceRepository.save(attendance);
 

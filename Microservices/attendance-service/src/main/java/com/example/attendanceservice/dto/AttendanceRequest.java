@@ -11,5 +11,6 @@ public class AttendanceRequest {
   private String qrSignature;
   private String studentCIC;
   private String deviceInfo;
-  private String locationInfo;
+  private Double latitude;
+  private Double longtitude;
 }

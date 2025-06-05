@@ -34,5 +34,8 @@ public class Attendance {
   private String deviceInfo;
 
   @Column
-  private String locationInfo;
+  private Double latitude;
+
+  @Column
+  private Double longtitude;
 }
