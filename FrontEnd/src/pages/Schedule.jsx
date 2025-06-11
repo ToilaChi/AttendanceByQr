@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/api';
 import { openQRTab, canGenerateQR } from '../utils/qrUtils';
+import QRScanner from '../components/common/QRScanner';
 import '../styles/Schedule.css';
 import Header from '../components/layout/Header';
 
@@ -12,6 +13,10 @@ const Schedule = () => {
   const [error, setError] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [qrGenerating, setQrGenerating] = useState(false);
+  
+  // QR Scanner states
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [selectedClassForAttendance, setSelectedClassForAttendance] = useState(null);
   
   // Refs để prevent duplicate calls
   const fetchingRef = useRef(false);
@@ -95,7 +100,7 @@ const Schedule = () => {
     }
   }, [userRole, formatDate]);
 
-  // Generate QR code
+  // Generate QR code (for teacher)
   const handleGenerateQR = useCallback(async (classInfo) => {
     if (qrGenerating) {
       return;
@@ -126,6 +131,43 @@ const Schedule = () => {
       setQrGenerating(false);
     }
   }, [qrGenerating]);
+
+  // Handle attendance (for student) - Mở QR Scanner
+  const handleAttendance = useCallback((classInfo) => {
+    // Kiểm tra thời gian có hợp lệ để điểm danh không
+    const now = new Date();
+    const classDate = new Date(`${classInfo.date}T${classInfo.startTime}`);
+    const endTime = new Date(`${classInfo.date}T${classInfo.endTime}`);
+    
+    // Cho phép điểm danh từ 30 phút trước đến 15 phút sau khi kết thúc lớp
+    const canAttendFrom = new Date(classDate.getTime() - 30 * 60 * 1000); // 30 phút trước
+    const canAttendUntil = new Date(endTime.getTime() + 15 * 60 * 1000); // 15 phút sau khi kết thúc
+
+    if (now < canAttendFrom) {
+      alert('Chưa đến thời gian điểm danh. Vui lòng thử lại sau.');
+      return;
+    }
+
+    if (now > canAttendUntil) {
+      alert('Đã hết thời gian điểm danh cho lớp học này.');
+      return;
+    }
+
+    // Mở QR Scanner
+    setSelectedClassForAttendance(classInfo);
+    setShowQRScanner(true);
+  }, []);
+
+  // Close QR Scanner
+  const handleCloseQRScanner = useCallback(() => {
+    setShowQRScanner(false);
+    setSelectedClassForAttendance(null);
+    
+    // Refresh schedule để cập nhật trạng thái điểm danh
+    setTimeout(() => {
+      refreshSchedule();
+    }, 1000);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -181,6 +223,29 @@ const Schedule = () => {
     return canGenerateQR(classInfo.startTime, classInfo.endTime, classInfo.date).canGenerate;
   }, []);
 
+  // Check if student can attend class
+  const canAttendClass = useCallback((classInfo) => {
+    if (!classInfo) return { canAttend: false, reason: '' };
+    
+    const now = new Date();
+    const classDate = new Date(`${classInfo.date}T${classInfo.startTime}`);
+    const endTime = new Date(`${classInfo.date}T${classInfo.endTime}`);
+    
+    // Cho phép điểm danh từ 30 phút trước đến 15 phút sau khi kết thúc lớp
+    const canAttendFrom = new Date(classDate.getTime() - 30 * 60 * 1000);
+    const canAttendUntil = new Date(endTime.getTime() + 15 * 60 * 1000);
+
+    if (now < canAttendFrom) {
+      return { canAttend: false, reason: 'Chưa đến thời gian điểm danh' };
+    }
+
+    if (now > canAttendUntil) {
+      return { canAttend: false, reason: 'Đã hết thời gian điểm danh' };
+    }
+
+    return { canAttend: true, reason: '' };
+  }, []);
+
   // Render schedule cell
   const renderScheduleCell = useCallback((dayIndex, timeRange) => {
     const classInfo = getClassForSlot(dayIndex, timeRange);
@@ -190,6 +255,7 @@ const Schedule = () => {
     }
 
     const canGenerate = canGenerateQRForClass(classInfo);
+    const attendanceStatus = canAttendClass(classInfo);
 
     return (
       <div className="schedule-cell filled">
@@ -199,6 +265,15 @@ const Schedule = () => {
           <div className="class-details">
             <div className="room">Phòng: {classInfo.room}</div>
             <div className="time">Thời gian: {classInfo.startTime} - {classInfo.endTime}</div>
+
+            {/* Hiển thị trạng thái điểm danh nếu có */}
+            {classInfo.attendanceStatus && (
+              <div className={`attendance-status ${classInfo.attendanceStatus.toLowerCase()}`}>
+                {classInfo.attendanceStatus === 'PRESENT' && '✓ Đã điểm danh'}
+                {classInfo.attendanceStatus === 'ABSENT' && '✗ Vắng mặt'}
+                {classInfo.attendanceStatus === 'LATE' && '⏰ Muộn'}
+              </div>
+            )}
 
             {userRole === 'TEACHER' ? (
               <button
@@ -214,13 +289,26 @@ const Schedule = () => {
                 {qrGenerating ? '⏳ Đang tạo...' : '📱 Tạo QR'}
               </button>
             ) : (
-              <div className="attendance-link">📍 Điểm danh</div>
+              <button
+                className={`attendance-button ${attendanceStatus.canAttend ? 'active' : 'disabled'}`}
+                onClick={() => attendanceStatus.canAttend && handleAttendance(classInfo)}
+                disabled={!attendanceStatus.canAttend || classInfo.attendanceStatus === 'PRESENT'}
+                title={
+                  classInfo.attendanceStatus === 'PRESENT'
+                    ? 'Đã điểm danh'
+                    : !attendanceStatus.canAttend
+                    ? attendanceStatus.reason
+                    : 'Nhấn để điểm danh'
+                }
+              >
+                {classInfo.attendanceStatus === 'PRESENT' ? '✓ Đã điểm danh' : '📍 Điểm danh'}
+              </button>
             )}
           </div>
         </div>
       </div>
     );
-  }, [getClassForSlot, userRole, canGenerateQRForClass, handleGenerateQR, qrGenerating]);
+  }, [getClassForSlot, userRole, canGenerateQRForClass, canAttendClass, handleGenerateQR, handleAttendance, qrGenerating]);
 
   const today = new Date();
   const todayStr = formatDate(today);
@@ -329,6 +417,13 @@ const Schedule = () => {
           ))}
         </div>
       </div>
+
+      {/* QR Scanner Modal */}
+      <QRScanner
+        isOpen={showQRScanner}
+        onClose={handleCloseQRScanner}
+        classInfo={selectedClassForAttendance}
+      />
     </div>
   );
 };

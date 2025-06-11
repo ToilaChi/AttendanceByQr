@@ -19,7 +19,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
     registry.addEndpoint("/ws-notifications")
-            .setAllowedOrigins("*") //Configure CORS
+            .setAllowedOrigins(
+                    "http://localhost:*",
+                    "http://127.0.0.1:*",
+                    "http://192.168.*.*:*")
             .withSockJS(); //Enable SockJS fallback
   }
 }

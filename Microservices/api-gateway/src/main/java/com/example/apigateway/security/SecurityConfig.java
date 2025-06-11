@@ -31,13 +31,13 @@ public class SecurityConfig {
     config.setAllowCredentials(true);
     config.setAllowedOriginPatterns(List.of(
             "http://localhost:5173",
-            "http://192.168.1.7:5173",
+            "http://192.168.1.4:5173",
             "http://192.168.161.1:5173",
             "http://192.168.174.1:5173"
     ));
     config.addAllowedOrigin(String.valueOf(List.of(
             "http://localhost:5173",
-            "http://192.168.1.7:5173",
+            "http://192.168.1.4:5173",
             "http://192.168.161.1:5173",
             "http://192.168.174.1:5173"
     )));

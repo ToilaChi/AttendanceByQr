@@ -32,13 +32,30 @@ spring:
           uri: lb://attendance-service
           predicates:
             - Path=/attendances/**, /qr/**
+        # Route cho WebSocket notifications
+        - id: notification-websocket
+          uri: lb://notification-service
+          predicates:
+            - Path=/ws-notifications/**
+          filters:
+            - RewritePath=/ws-notifications/(?<segment>.*), /ws-notifications/$\{segment}
+        #Route cho Notification service
+        - id: notification-route
+          uri: lb://notification-service
+          predicates:
+            - Path=/notifications/**
+          filters:
+            - RewritePath=/notifications/(?<segment>.*), /$\{segment}
+      global-filter:
+        websocket-routing:
+          enabled: true
 
 eureka:
   client:
     register-with-eureka: true
     fetch-registry: true
     service-url:
-      defaultZone: http://192.168.161.1:8761/eureka
+      defaultZone: http://192.168.1.4:8761/eureka
   instance:
     prefer-ip-address: true
 

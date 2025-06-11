@@ -52,7 +52,7 @@ public class NatsSubscriberService {
       AttendanceEvent event = objectMapper.readValue(jsonData, AttendanceEvent.class);
 
       //Tao notification message
-      NotificationMessage notificationMessage = new NotificationMessage().fromAttendanceEvent(
+      NotificationMessage notificationMessage = NotificationMessage.fromAttendanceEvent(
               event, "ATTENDANCE_SUCCESS"
       );
 
@@ -71,7 +71,7 @@ public class NatsSubscriberService {
       AttendanceEvent event = objectMapper.readValue(jsonData, AttendanceEvent.class);
 
       //Tao notification message
-      NotificationMessage notificationMessage = new NotificationMessage().fromAttendanceEvent(
+      NotificationMessage notificationMessage = NotificationMessage.fromAttendanceEvent(
               event, "ATTENDANCE_FAILED"
       );
 

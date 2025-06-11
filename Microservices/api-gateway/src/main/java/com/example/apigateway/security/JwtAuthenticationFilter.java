@@ -24,17 +24,23 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
     ServerHttpRequest request = exchange.getRequest();
-    System.out.println("Gateway Filter đang xử lý request path: " + request.getURI().getPath());
+    String path = request.getURI().getPath();
+    System.out.println("🌐 Gateway Filter processing: " + path);
 
     // Kiểm tra xem endpoint này có cần xác thực không
-    if (routerValidator.isSecured.test(request)) {
+    boolean needsAuth = routerValidator.isSecured.test(request);
+    System.out.println("🔐 Path " + path + " needs authentication: " + needsAuth);
+
+    if (needsAuth) {
       // Kiểm tra authorization header
       if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+        System.out.println("❌ Missing authorization header for: " + path);
         return onError(exchange, "Missing authorization header");
       }
 
       String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
       if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        System.out.println("❌ Invalid authorization header format for: " + path);
         return onError(exchange, "Invalid authorization header format");
       }
 
@@ -43,6 +49,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
       try {
         // Xác thực token
         if (!jwtUtil.validateToken(token)) {
+          System.out.println("❌ Invalid JWT token for: " + path);
           return onError(exchange, "Invalid JWT token");
         }
 
@@ -50,23 +57,23 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String cic = jwtUtil.extractCIC(token);
         String role = jwtUtil.extractRole(token);
 
-        System.out.println(">> JWT OK: CIC = " + cic + ", role = " + role);
+        System.out.println("✅ JWT valid for " + path + " - CIC: " + cic + ", Role: " + role);
+
         // Thêm thông tin người dùng vào headers để các service sau có thể sử dụng
         ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
                 .header("X-User-CIC", cic)
                 .header("X-User-Role", role)
                 .build();
 
-        // Tiếp tục với request đã được sửa đổi
-        System.out.println("JWT hợp lệ – CIC: " + cic + ", role: " + role);
-
         return chain.filter(exchange.mutate().request(modifiedRequest).build());
       } catch (Exception e) {
+        System.out.println("❌ Token validation failed for " + path + ": " + e.getMessage());
         return onError(exchange, "Invalid token: " + e.getMessage());
       }
     }
 
     // Nếu không cần xác thực, chỉ cần forward request
+    System.out.println("✅ Open endpoint, forwarding: " + path);
     return chain.filter(exchange);
   }
 

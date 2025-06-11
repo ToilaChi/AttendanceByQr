@@ -13,7 +13,8 @@ public class RouterValidator {
           "/auth/login",
           "/auth/logout",
           "/auth/refresh-token",
-          "/eureka"
+          "/eureka",
+          "ws-notifications"
   );
 
   public Predicate<ServerHttpRequest> isSecured = request -> {
@@ -24,5 +25,3 @@ public class RouterValidator {
     return openEndpoints.stream().noneMatch(path::startsWith);
   };
 }
-
-

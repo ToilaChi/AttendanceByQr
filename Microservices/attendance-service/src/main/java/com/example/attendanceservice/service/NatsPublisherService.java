@@ -27,7 +27,7 @@ class NatsPublisherService {
   @PostConstruct
   public void init() {
     this.objectMapper = new ObjectMapper();
-    this.objectMapper.registerModule(new JavaTimeModule()); // Dòng quan trọng cần thêm
+    this.objectMapper.registerModule(new JavaTimeModule());
     this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS); // Để LocalDateTime được serialize thành chuỗi ISO 8601
     this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false); // Cấu hình thêm nếu cần
   }

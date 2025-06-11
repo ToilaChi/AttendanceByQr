@@ -1,3 +1,5 @@
+/* Schedule Component Styles - Complete Updated Version */
+
 .schedule-container {
   background-color: #f5f5f5;
   min-height: 100vh;
@@ -131,12 +133,23 @@
 }
 
 .schedule-cell.empty {
-  background: white;
+  background: #fafafa;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  min-height: 80px;
 }
 
 .schedule-cell.filled {
-  background: #e3f2fd;
-  border-left: 4px solid #2196f3;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.schedule-cell.filled:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .class-info {
@@ -148,43 +161,154 @@
 
 .subject-name {
   font-weight: 600;
-  color: #1976d2;
   font-size: 14px;
+  color: #1f2937;
   margin-bottom: 4px;
 }
 
 .class-code {
   font-size: 12px;
-  color: #666;
+  color: #6b7280;
   margin-bottom: 8px;
   font-weight: bolder;
 }
 
 .class-details {
   font-size: 11px;
-  color: #666;
+  color: #4b5563;
   font-weight: bolder;
 }
 
-.class-details>div {
+.class-details > div {
   margin-bottom: 2px;
 }
 
-.attendance-link {
-  color: #f44336;
+.class-details .room,
+.class-details .time {
+  margin-bottom: 4px;
+}
+
+/* QR Button Styles for Teachers */
+.qr-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 4px;
-  padding: 2px 6px;
-  background: #ffebee;
-  border-radius: 4px;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+  width: 100%;
   text-align: center;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.qr-button.active:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.qr-button.disabled {
+  background: #9ca3af;
+  color: #6b7280;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.qr-button:disabled {
+  background: #9ca3af;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Attendance Button Styles for Students */
+.attendance-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+  width: 100%;
+}
+
+.attendance-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.attendance-button.disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.attendance-button.disabled:hover {
+  transform: none;
+}
+
+/* Legacy attendance-link styles for backward compatibility */
+.attendance-link {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .attendance-link:hover {
-  background: #ffcdd2;
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  transform: translateY(-1px);
 }
 
+/* Attendance Status Styles */
+.attendance-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 12px;
+  margin-top: 6px;
+  text-align: center;
+}
+
+.attendance-status.present {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.attendance-status.absent {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.attendance-status.late {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+/* Loading and Error States */
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -203,6 +327,13 @@
   padding: 20px 40px;
   border-radius: 8px;
   font-weight: 600;
+}
+
+.loading-indicator {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
 }
 
 .error-message {
@@ -232,67 +363,94 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* QR button */
-.qr-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Animation for attendance success */
+@keyframes attendanceSuccess {
+  0% {
+    background: #10b981;
+    transform: scale(1);
+  }
+  50% {
+    background: #059669;
+    transform: scale(1.05);
+  }
+  100% {
+    background: #10b981;
+    transform: scale(1);
+  }
+}
+
+.attendance-button.success {
+  animation: attendanceSuccess 0.6s ease-out;
+}
+
+/* Loading state for buttons */
+@keyframes spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.attendance-button.loading,
+.qr-button.loading {
+  position: relative;
+  color: transparent;
+}
+
+.attendance-button.loading::after,
+.qr-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
   color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 8px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.qr-button.active:hover {
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+/* Tooltip styles */
+.schedule-cell [title] {
+  position: relative;
 }
 
-.qr-button.disabled {
-  background: #e2e8f0;
-  color: #a0aec0;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.qr-button:disabled {
-  background: #e2e8f0;
-  color: #a0aec0;
-  cursor: not-allowed;
-}
-
-.attendance-link {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+.schedule-cell [title]:hover::before {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
   color: white;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 4px;
 }
 
-.attendance-link:hover {
-  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-  transform: translateY(-1px);
+.schedule-cell [title]:hover::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
 }
 
-@media (min-width:1024px) {
+/* Desktop styles */
+@media (min-width: 1024px) {
   .schedule-content {
     padding: 20px 140px 20px 140px;
   }
 }
 
+/* Tablet styles */
 @media (max-width: 768px) {
   .schedule-container {
     padding: 10px;
@@ -324,8 +482,20 @@
     font-size: 10px;
     font-weight: bold;
   }
+
+  .attendance-button,
+  .qr-button {
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+
+  .attendance-status {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
 }
 
+/* Mobile styles */
 @media (max-width: 480px) {
   .schedule-container {
     padding: 5px;
@@ -376,7 +546,6 @@
   .schedule-cell-container,
   .schedule-cell {
     flex: 0 0 80px;
-    /* Chiều rộng mỗi ô */
     max-width: 80px;
     box-sizing: border-box;
   }
@@ -422,5 +591,11 @@
     font-size: 9px;
     color: red;
     cursor: pointer;
+  }
+
+  .attendance-button,
+  .qr-button {
+    font-size: 9px;
+    padding: 4px 6px;
   }
 }
