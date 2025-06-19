@@ -7,6 +7,8 @@ const api = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+    'Access-Control-Allow-Origin': '*',
   },
   withCredentials: true
 });
@@ -33,6 +35,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers['ngrok-skip-browser-warning'] = 'true';
     return config;
   },
   (error) => Promise.reject(error)
@@ -103,8 +106,14 @@ api.interceptors.response.use(
       }
     }
 
+    if (error.response?.status === 502) {
+      console.error('Ngrok tunnel might be down or backend not running');
+    }
+
     return Promise.reject(error);
   }
 );
 
 export default api;
+
+export {API_BASE_URL}

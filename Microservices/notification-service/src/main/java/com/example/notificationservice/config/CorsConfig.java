@@ -1,35 +1,23 @@
-package com.example.apigateway.security;
+package com.example.notificationservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
 import java.util.List;
 
 @Configuration
-@EnableWebFluxSecurity
-public class SecurityConfig {
+public class CorsConfig {
 
   @Bean
-  public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-    return http
-            .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .build();
-  }
-
-  @Bean
-  public CorsWebFilter corsWebFilter() {
+  public CorsFilter corsFilter() {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowCredentials(true);
 
-    // Sử dụng allowedOriginPatterns và đảm bảo không có wildcard khi allowCredentials = true
+    // Sử dụng allowedOriginPatterns thay vì allowedOrigins
     config.setAllowedOriginPatterns(List.of(
             "http://localhost:5173",
             "http://192.168.1.4:5173",
@@ -45,14 +33,12 @@ public class SecurityConfig {
             "Authorization",
             "Cache-Control",
             "Content-Type",
-            "ngrok-skip-browser-warning",
-            "Access-Control-Allow-Origin",
-            "Access-Control-Allow-Credentials"
+            "ngrok-skip-browser-warning"
     ));
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
 
-    return new CorsWebFilter(source);
+    return new CorsFilter(source);
   }
 }

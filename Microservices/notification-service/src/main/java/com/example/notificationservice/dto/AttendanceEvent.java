@@ -15,7 +15,6 @@ public class AttendanceEvent {
   private Long scheduleId;
   private String classCode;
 
-  @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
   private LocalDateTime timestamp;
 
   private boolean success;

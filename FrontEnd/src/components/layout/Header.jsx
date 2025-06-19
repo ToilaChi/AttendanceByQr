@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import '../../styles/Header.css'; 
+import '../../styles/Header.css';
 
 const Header = () => {
   const { user, logout } = useAuth();

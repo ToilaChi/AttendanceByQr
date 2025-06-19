@@ -20,6 +20,12 @@ public interface ClassServiceClient {
           @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate currentDate
   );
 
+  @GetMapping("/schedules/student")
+  ApiResponse<List<ScheduleResponse>> getStudentSchedule(
+          @RequestHeader("X-User-CIC") String studentCIC,
+          @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate currentDate
+  );
+
   @GetMapping("/enrollments/check")
   ResponseEntity<ApiResponse<Boolean>> checkStudentEnrollment(
           @RequestHeader("X-User-CIC") String studentCIC,

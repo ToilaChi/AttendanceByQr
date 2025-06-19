@@ -14,7 +14,9 @@ public class RouterValidator {
           "/auth/logout",
           "/auth/refresh-token",
           "/eureka",
-          "ws-notifications"
+          "/ws-notifications",
+          "/ws-notifications/**",
+          "/ws-notifications/info"
   );
 
   public Predicate<ServerHttpRequest> isSecured = request -> {

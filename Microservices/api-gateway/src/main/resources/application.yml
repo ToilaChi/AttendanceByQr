@@ -1,6 +1,7 @@
 server:
   port: 8080
   address: 0.0.0.0
+  forward-headers-strategy: framework
 
 spring:
   application:
@@ -9,9 +10,20 @@ spring:
     web-application-type: reactive
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
       httpclient:
         connect-timeout: 5000
         response-timeout: 10s
+      forwarded:
+        enabled: true
+      x-forwarded:
+        enabled: true
+        for-enabled: true
+        host-enabled: true
+        port-enabled: true
+        proto-enabled: true
+        prefix-enabled: true
       discovery:
         locator:
           enabled: true
@@ -50,12 +62,15 @@ spring:
         websocket-routing:
           enabled: true
 
+
 eureka:
   client:
     register-with-eureka: true
     fetch-registry: true
     service-url:
       defaultZone: http://192.168.1.4:8761/eureka
+#      defaultZone: http://172.20.10.6:8761/eureka
+#      defaultZone: http://192.168.185.246:8761/eureka
   instance:
     prefer-ip-address: true
 

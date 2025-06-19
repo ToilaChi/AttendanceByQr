@@ -12,5 +12,5 @@ public class AttendanceRequest {
   private String studentCIC;
   private String deviceInfo;
   private Double latitude;
-  private Double longtitude;
+  private Double longitude;
 }
