@@ -12,6 +12,18 @@ import org.springframework.stereotype.Service;
 public class WebSocketNotificationService {
   private final SimpMessagingTemplate messagingTemplate;
 
+  //Gửi thông báo đến sinh viên cụ thể
+  //Topic pattern: /topic/student/{studentCIC}
+  public void sendStudentNotification(String studentCIC, NotificationMessage message) {
+    String destination = "/topic/student/" + studentCIC;
+    try {
+      messagingTemplate.convertAndSend(destination, message);
+      log.info("Sent notification to student {}: {}", studentCIC, message.getMessage());
+    } catch (Exception e) {
+      log.error("Failed to send notification to student {}: {}", studentCIC, message, e);
+    }
+  }
+
   //Gửi thông báo đến tất cả những sub của class cụ thể
   //Topic pattern: /topic/class/{classCode}
   public void sendClassNotification(String classCode, NotificationMessage message) {
@@ -46,5 +58,26 @@ public class WebSocketNotificationService {
     } catch (Exception e) {
       log.error("Failed to send notification to: {}", message, e);
     }
+  }
+
+  //Gửi thông báo đến cả sinh viên cụ thể và general topic
+  public void sendAttendanceNotification(NotificationMessage message) {
+    //Gửi đến sinh viên cụ thể
+    if(message.getStudentCIC() != null) {
+      sendStudentNotification(message.getStudentCIC(), message);
+    }
+
+    //Gửi đến class 
+    if(message.getClassCode() != null) {
+      sendClassNotification(message.getClassCode(), message);
+    }
+
+    //Gửi đến schedule
+    if(message.getScheduleId() != null) {
+      sendScheduleNotification(message.getScheduleId(), message);
+    }
+
+    //Gửi đến general topic
+    sendGeneralNotification(message);
   }
 }

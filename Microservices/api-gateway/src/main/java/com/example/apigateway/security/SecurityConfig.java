@@ -35,8 +35,9 @@ public class SecurityConfig {
             "http://192.168.1.4:5173",
             "http://192.168.161.1:5173",
             "http://192.168.174.1:5173",
-            "https://*.ngrok-free.app",
-            "https://*.ngrok.io"
+//            "https://*.ngrok-free.app",
+//            "https://*.ngrok.io",
+            "https://talented-rare-iguana.ngrok-free.app"
     ));
 
     config.setAllowedHeaders(List.of("*"));

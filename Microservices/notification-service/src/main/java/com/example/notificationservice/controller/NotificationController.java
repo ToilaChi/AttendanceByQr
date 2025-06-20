@@ -25,6 +25,7 @@ public class NotificationController {
             "description", "Real-time notification service for attendance system",
             "websocket_endpoint", "/ws-notifications",
             "topic", Map.of(
+                    "student_notifications", "/topic/student/{studentCIC}",
                     "class_notifications", "/topic/class/{classCode}",
                     "schedule_notifications", "/topic/schedule/{scheduleId}",
                     "general_notifications", "/topic/attendance"

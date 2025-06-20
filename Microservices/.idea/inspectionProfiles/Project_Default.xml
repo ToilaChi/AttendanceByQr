@@ -7,6 +7,7 @@
           <option value="X-User-Name" />
           <option value="X-User-Role" />
           <option value="X-User-CIC" />
+          <option value="ngrok-skip-browser-warning" />
         </set>
       </option>
     </inspection_tool>

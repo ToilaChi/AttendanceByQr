@@ -28,72 +28,138 @@ const QRScanner = ({ isOpen, onClose, classInfo }) => {
       const token = localStorage.getItem('accessToken');
       console.log('Token:', token);
 
-      // Cấu hình SockJS với options phù hợp
-      const socket = new SockJS(`${API_BASE_URL}/ws-notifications`, null, {
-        // Không gửi credentials tự động, để API Gateway xử lý
-        withCredentials: false,
-        // Thêm headers nếu cần
+      // Sử dụng endpoint chính xác
+      const socketUrl = new WebSocket("wss://da54-2001-ee0-4f8b-5d10-b818-fd3b-4ec6-92e8.ngrok-free.app/ws-notifications?token=" + token);
+      console.log('Connecting to WebSocket:', socketUrl);
+
+      const socket = new SockJS(socketUrl, null, {
+        transports: ['websocket'],
         headers: {
-          'ngrok-skip-browser-warning': 'true'
-        }
+          'ngrok-skip-browser-warning': 'true',
+        },
+        withCredentials: false,
+        timeout: 30000,
       });
+
+      console.log('SockJS connection established:', socket);
 
       const client = Stomp.over(socket);
 
-      // Disable debug nếu không cần
-      client.debug = null;
+      // Enable debug cho development
+      client.debug = function (str) {
+        console.log('STOMP DEBUG: ' + str);
+      };
 
+      // Connect với proper error handling
       client.connect(
-        {
-          // Gửi token qua headers thay vì credentials
-          Authorization: token ? `Bearer ${token}` : ''
-        },
-        () => {
-          console.log('✅ WebSocket connected successfully');
+        {}, // Connect headers
+        // Success callback
+        (frame) => {
+          console.log('WebSocket connected successfully:', frame);
           setIsConnected(true);
 
-          // Subscribe to user-specific notifications
-          client.subscribe(`/topic/student/${user.data.cic}`, (message) => {
+          // Subscribe to personal student notifications
+          const studentSubscription = client.subscribe(`/topic/student/${user.data.cic}`, (message) => {
             const notification = JSON.parse(message.body);
+            console.log('Received personal notification:', notification);
             handleAttendanceNotification(notification);
           });
 
           // Subscribe to general attendance notifications
-          client.subscribe('/topic/attendance', (message) => {
+          const generalSubscription = client.subscribe('/topic/attendance', (message) => {
             const notification = JSON.parse(message.body);
+            console.log('Received general notification:', notification);
+
+            // Chỉ xử lý nếu là notification của chính mình
             if (notification.studentCIC === user.data.cic) {
               handleAttendanceNotification(notification);
             }
           });
 
+          // Optional: Subscribe to class notifications if needed
+          if (user.data.currentClass) {
+            const classSubscription = client.subscribe(`/topic/class/${user.data.currentClass}`, (message) => {
+              const notification = JSON.parse(message.body);
+              console.log('Received class notification:', notification);
+
+              // Chỉ xử lý nếu là notification của chính mình
+              if (notification.studentCIC === user.data.cic) {
+                handleAttendanceNotification(notification);
+              }
+            });
+          }
+
+          // Send connection confirmation
+          client.send("/app/connect", {}, JSON.stringify({
+            studentCIC: user.data.cic,
+            timestamp: new Date().toISOString()
+          }));
+
+          // Send subscription request for personal topic
+          client.send(`/app/subscribe/student/${user.data.cic}`, {}, JSON.stringify({
+            studentCIC: user.data.cic,
+            timestamp: new Date().toISOString()
+          }));
+
           setStompClient(client);
         },
+        // Error callback
         (error) => {
-          console.error('❌ WebSocket connection error:', error);
+          console.error('WebSocket connection error:', error);
           setIsConnected(false);
 
-          // Retry connection after 5 seconds
+          // Retry connection after delay
           setTimeout(() => {
-            console.log('🔄 Retrying WebSocket connection...');
-            connectWebSocket();
+            if (isOpen && !stompClient) {
+              console.log('Retrying WebSocket connection...');
+              connectWebSocket();
+            }
           }, 5000);
         }
       );
 
+      // Handle socket events
+      socket.onopen = () => {
+        console.log('SockJS connection opened');
+      };
+
+      socket.onclose = (event) => {
+        console.log('SockJS connection closed:', event);
+        setIsConnected(false);
+      };
+
+      socket.onerror = (error) => {
+        console.error('SockJS error:', error);
+        setIsConnected(false);
+      };
+
     } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
+      console.error('Failed to initialize WebSocket:', error);
       setIsConnected(false);
     }
-  }, [user]);
+  }, [user, isOpen, stompClient]);
 
-  // Disconnect WebSocket
+  // Cleanup function
   const disconnectWebSocket = useCallback(() => {
     if (stompClient && stompClient.connected) {
-      stompClient.disconnect();
-      setStompClient(null);
-      setIsConnected(false);
+      try {
+        // Send disconnect message
+        stompClient.send("/app/disconnect", {}, JSON.stringify({
+          studentCIC: user.data.cic,
+          timestamp: new Date().toISOString()
+        }));
+
+        // Disconnect
+        stompClient.disconnect(() => {
+          console.log('WebSocket disconnected');
+          setIsConnected(false);
+          setStompClient(null);
+        });
+      } catch (error) {
+        console.error('Error disconnecting WebSocket:', error);
+      }
     }
-  }, [stompClient]);
+  }, [stompClient, user]);
 
   // Handle attendance notification từ WebSocket
   const handleAttendanceNotification = useCallback((notification) => {

@@ -14,9 +14,9 @@ public class RouterValidator {
           "/auth/logout",
           "/auth/refresh-token",
           "/eureka",
-          "/ws-notifications",
           "/ws-notifications/**",
-          "/ws-notifications/info"
+          "/notifications/**"
+//          "/ws-notifications/info"
   );
 
   public Predicate<ServerHttpRequest> isSecured = request -> {
@@ -24,6 +24,15 @@ public class RouterValidator {
     System.out.println("🧭 RouterValidator path: " + path);
 
     // Kiểm tra xem path có bắt đầu bằng bất kỳ endpoint nào trong danh sách không
-    return openEndpoints.stream().noneMatch(path::startsWith);
+    boolean isOpenEndpoint = openEndpoints.stream().anyMatch(path::startsWith);
+
+    if (isOpenEndpoint) {
+      System.out.println("🔓 Open endpoint detected: " + path);
+      return false; // Không cần authentication
+    }
+
+    // Tất cả các endpoint khác (bao gồm ws-notifications) đều cần authentication
+    System.out.println("🔒 Secured endpoint detected: " + path);
+    return true; // Cần authentication
   };
 }

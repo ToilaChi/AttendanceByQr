@@ -45,18 +45,19 @@ spring:
           predicates:
             - Path=/attendances/**, /qr/**
         # Route cho WebSocket notifications
-        - id: notification-websocket
-          uri: lb://notification-service
-          predicates:
-            - Path=/ws-notifications/**
-          filters:
-            - RewritePath=/ws-notifications/(?<segment>.*), /ws-notifications/$\{segment}
+#        - id: notification-websocket
+#          uri: lb://notification-service
+#          predicates:
+#            - Path=/ws-notifications/**
+#          filters:
+#            - RewritePath=/ws-notifications/(?<segment>.*), /ws-notifications/$\{segment}
         #Route cho Notification service
         - id: notification-route
           uri: lb://notification-service
           predicates:
-            - Path=/notifications/**
+            - Path=/notifications/**, /ws-notifications/**
           filters:
+            - RewritePath=/ws-notifications/(?<segment>.*), /ws-notifications/$\{segment}
             - RewritePath=/notifications/(?<segment>.*), /$\{segment}
       global-filter:
         websocket-routing:

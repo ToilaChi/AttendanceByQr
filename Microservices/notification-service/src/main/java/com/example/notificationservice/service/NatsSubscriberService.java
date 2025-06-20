@@ -56,7 +56,7 @@ public class NatsSubscriberService {
               event, "ATTENDANCE_SUCCESS"
       );
 
-      //Gui notifi thong qua socket
+      //Gui notification thong qua socket
       sendNotification(notificationMessage);
     }catch (Exception e) {
       log.error("Failed to process attendance success event", e);
@@ -83,21 +83,13 @@ public class NatsSubscriberService {
   }
 
   private void sendNotification(NotificationMessage notificationMessage) {
-    //Gửi đến topic cụ thể của class
-    if(notificationMessage.getClassCode() != null) {
-      webSocketNotificationService.sendClassNotification(
-              notificationMessage.getClassCode(), notificationMessage
-      );
-    }
+    try {
+      webSocketNotificationService.sendAttendanceNotification(notificationMessage);
 
-    //Gửi đến topic cụ thể của schedule
-    if(notificationMessage.getScheduleId() != null) {
-      webSocketNotificationService.sendScheduleNotification(
-              notificationMessage.getScheduleId(), notificationMessage
-      );
+      log.info("Successfully sent attendance notification for student: {}",
+              notificationMessage.getStudentCIC());
+    } catch (Exception e) {
+      log.error("Failed to send attendance notification: {}", notificationMessage, e);
     }
-
-    //Gửi đến general attendance topic
-    webSocketNotificationService.sendGeneralNotification(notificationMessage);
   }
 }
