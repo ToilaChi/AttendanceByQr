@@ -19,9 +19,15 @@ public class SecurityConfig {
 
   @Bean
   public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-    return http
+    http
+            .cors(cors -> corsWebFilter())
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .build();
+            .authorizeExchange(exchanges -> exchanges
+                    .pathMatchers("/auth/login", "/auth/logout").permitAll()
+                    .pathMatchers("/ws-notifications/**").permitAll()
+                    .pathMatchers("/**").permitAll()
+            );
+    return http.build();
   }
 
   @Bean
@@ -29,14 +35,11 @@ public class SecurityConfig {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowCredentials(true);
 
-    // Sử dụng allowedOriginPatterns và đảm bảo không có wildcard khi allowCredentials = true
     config.setAllowedOriginPatterns(List.of(
             "http://localhost:5173",
             "http://192.168.1.4:5173",
             "http://192.168.161.1:5173",
             "http://192.168.174.1:5173",
-//            "https://*.ngrok-free.app",
-//            "https://*.ngrok.io",
             "https://talented-rare-iguana.ngrok-free.app"
     ));
 
@@ -46,9 +49,7 @@ public class SecurityConfig {
             "Authorization",
             "Cache-Control",
             "Content-Type",
-            "ngrok-skip-browser-warning",
-            "Access-Control-Allow-Origin",
-            "Access-Control-Allow-Credentials"
+            "ngrok-skip-browser-warning"
     ));
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

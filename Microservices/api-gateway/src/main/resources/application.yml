@@ -55,9 +55,8 @@ spring:
         - id: notification-route
           uri: lb://notification-service
           predicates:
-            - Path=/notifications/**, /ws-notifications/**
+            - Path=/notifications/**
           filters:
-            - RewritePath=/ws-notifications/(?<segment>.*), /ws-notifications/$\{segment}
             - RewritePath=/notifications/(?<segment>.*), /$\{segment}
       global-filter:
         websocket-routing:

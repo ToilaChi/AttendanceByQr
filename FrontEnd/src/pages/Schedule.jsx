@@ -56,7 +56,7 @@ const Schedule = () => {
   const timeSlots = [
     { label: 'Sáng', periods: ['06:45 - 09:15', '09:25 - 11:55'] },
     { label: 'Chiều', periods: ['12:10 - 14:40', '14:50 - 17:20'] },
-    { label: 'Tối', periods: ['17:30 - 20:00', '20:30 - 23:59'] }
+    { label: 'Tối', periods: ['17:30 - 20:00', '20:30 - 23:55'] }
   ];
 
   // Optimized hàm gọi lịch và tránh duplicate calls
