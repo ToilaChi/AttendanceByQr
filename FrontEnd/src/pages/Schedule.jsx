@@ -13,11 +13,11 @@ const Schedule = () => {
   const [error, setError] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [qrGenerating, setQrGenerating] = useState(false);
-  
+
   // QR Scanner states
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [selectedClassForAttendance, setSelectedClassForAttendance] = useState(null);
-  
+
   // Refs để prevent duplicate calls
   const fetchingRef = useRef(false);
   const lastFetchedDate = useRef(null);
@@ -34,7 +34,10 @@ const Schedule = () => {
 
   // Get tuần hiện tại dựa trên current date 
   const getWeekDates = useCallback((date) => {
-    const currentDay = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    let currentDay = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    if (currentDay === 0) {
+      currentDay = 7; // Đổi Chủ Nhật từ 0 → 7 để thuộc tuần hiện tại
+    }
     const monday = new Date(date);
     monday.setDate(date.getDate() - currentDay + 1);
 
@@ -54,7 +57,7 @@ const Schedule = () => {
 
   // Time slots for the schedule
   const timeSlots = [
-    { label: 'Sáng', periods: ['06:45 - 09:15', '09:25 - 11:55'] },
+    { label: 'Sáng', periods: ['00:00 - 02:00', '06:45 - 09:15', '09:25 - 11:55'] },
     { label: 'Chiều', periods: ['12:10 - 14:40', '14:50 - 17:20'] },
     { label: 'Tối', periods: ['17:30 - 20:00', '20:30 - 23:55'] }
   ];
@@ -62,10 +65,10 @@ const Schedule = () => {
   // Optimized hàm gọi lịch và tránh duplicate calls
   const fetchSchedule = useCallback(async (date) => {
     const dateStr = formatDate(date);
-    
+
     // Prevent duplicate calls
-    if (fetchingRef.current || 
-        (lastFetchedDate.current === dateStr && lastFetchedRole.current === userRole)) {
+    if (fetchingRef.current ||
+      (lastFetchedDate.current === dateStr && lastFetchedRole.current === userRole)) {
       return;
     }
 
@@ -138,7 +141,7 @@ const Schedule = () => {
     const now = new Date();
     const classDate = new Date(`${classInfo.date}T${classInfo.startTime}`);
     const endTime = new Date(`${classInfo.date}T${classInfo.endTime}`);
-    
+
     // Cho phép điểm danh từ 30 phút trước đến 15 phút sau khi kết thúc lớp
     const canAttendFrom = new Date(classDate.getTime() - 30 * 60 * 1000); // 30 phút trước
     const canAttendUntil = new Date(endTime.getTime() + 15 * 60 * 1000); // 15 phút sau khi kết thúc
@@ -162,7 +165,7 @@ const Schedule = () => {
   const handleCloseQRScanner = useCallback(() => {
     setShowQRScanner(false);
     setSelectedClassForAttendance(null);
-    
+
     // Refresh schedule để cập nhật trạng thái điểm danh
     setTimeout(() => {
       refreshSchedule();
@@ -190,7 +193,7 @@ const Schedule = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + (direction * 7));
     setCurrentDate(newDate);
-    
+
     // Reset fetch cache when navigating
     lastFetchedDate.current = null;
     lastFetchedRole.current = null;
@@ -226,11 +229,11 @@ const Schedule = () => {
   // Check if student can attend class
   const canAttendClass = useCallback((classInfo) => {
     if (!classInfo) return { canAttend: false, reason: '' };
-    
+
     const now = new Date();
     const classDate = new Date(`${classInfo.date}T${classInfo.startTime}`);
     const endTime = new Date(`${classInfo.date}T${classInfo.endTime}`);
-    
+
     // Cho phép điểm danh từ 30 phút trước đến 15 phút sau khi kết thúc lớp
     const canAttendFrom = new Date(classDate.getTime() - 30 * 60 * 1000);
     const canAttendUntil = new Date(endTime.getTime() + 15 * 60 * 1000);
@@ -297,8 +300,8 @@ const Schedule = () => {
                   classInfo.attendanceStatus === 'PRESENT'
                     ? 'Đã điểm danh'
                     : !attendanceStatus.canAttend
-                    ? attendanceStatus.reason
-                    : 'Nhấn để điểm danh'
+                      ? attendanceStatus.reason
+                      : 'Nhấn để điểm danh'
                 }
               >
                 {classInfo.attendanceStatus === 'PRESENT' ? '✓ Đã điểm danh' : '📍 Điểm danh'}

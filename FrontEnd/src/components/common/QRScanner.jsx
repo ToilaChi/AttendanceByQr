@@ -1,158 +1,163 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import api from '../../api/api';
 import jsQR from 'jsqr';
-import SockJS from 'sockjs-client';
-import { Stomp } from '@stomp/stompjs';
+import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/QRScanner.css';
+import api from '../../api/api';
 import { API_NOTIFICATIONS } from '../../config';
+import { Client } from '@stomp/stompjs';
 
 const QRScanner = ({ isOpen, onClose, classInfo }) => {
   const { user } = useAuth();
-  const [isScanning, setIsScanning] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [cameraPermission, setCameraPermission] = useState(null);
-  const [location, setLocation] = useState({ latitude: null, longitude: null });
-  const [attendanceStatus, setAttendanceStatus] = useState(null);
-  const [stompClient, setStompClient] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const scanIntervalRef = useRef(null);
+  const wsRef = useRef(null);
+  const scanningIntervalRef = useRef(null);
+  const locationWatchRef = useRef(null);
+  const attendanceStatusRef = useRef('not_checked');
 
-  // Handle attendance notification từ WebSocket
-  const handleAttendanceNotification = useCallback((notification) => {
-    console.log('Received attendance notification:', notification);
+  // States
+  const [isScanning, setIsScanning] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [cameraPermission, setCameraPermission] = useState('prompt'); // 'granted', 'denied', 'prompt'
+  const [attendanceStatus, setAttendanceStatus] = useState('not_checked'); // 'not_checked', 'loading', 'waiting', 'checked'
+  const [isConnected, setIsConnected] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(null);
 
-    if (notification.type === 'ATTENDANCE_SUCCESS') {
-      setSuccess(notification.message);
-      setAttendanceStatus('checked');
-      setLoading(false);
+  // WebSocket URL - adjust according to your backend configuration
+  const token = localStorage.getItem('accessToken');
+  const WS_URL = `${API_NOTIFICATIONS.replace('https', 'wss')}/ws-notifications?token=${encodeURIComponent(token)}`;
 
-      // Auto close after 2 seconds
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+  // Initialize WebSocket connection
+  const initWebSocket = useCallback(() => {
+    if (!user?.data?.cic) return;
 
-    } else if (notification.type === 'ATTENDANCE_FAILED') {
-      setError(notification.message);
-      setLoading(false);
-
-      // Retry scanning after 3 seconds
-      setTimeout(() => {
-        if (isOpen && cameraPermission === 'granted' && attendanceStatus !== 'checked') {
-          setError(null);
-          setIsScanning(true);
-          startScanning();
-        }
-      }, 3000);
-    }
-  }, [isOpen, cameraPermission, attendanceStatus, onClose]);
-
-  // Native WebSocket connection function
-  const connectWebSocket = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      console.log('Token:', token ? token.substring(0, 20) + '...' : 'null');
-      if (!token) {
-        throw new Error('No access token available');
-      }
-      const wssUrl = `${API_NOTIFICATIONS.replace('https', 'wss')}/ws-notifications?token=${encodeURIComponent(token)}`;
-      console.log('Connecting to WebSocket:', wssUrl);
-      const nativeSocket = new WebSocket(wssUrl);
-      const client = Stomp.over(nativeSocket);
-      client.debug = (str) => console.log('STOMP DEBUG:', str);
-      client.heartbeatIncoming = 4000;
-      client.heartbeatOutgoing = 4000;
-      client.connect({}, (frame) => {
-        console.log('WebSocket connected:', frame);
+      const stompClient = new Client({
+        brokerURL: WS_URL,
+        connectHeaders: {},
+        debug: function (str) {
+          console.log('STOMP: ' + str);
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+      });
+
+      stompClient.onConnect = (frame) => {
+        console.log('Connected: ' + frame);
         setIsConnected(true);
-        reconnectAttempts.current = 0;
-        if (!user?.data?.cic) {
-          console.error('Missing user.data.cic');
-          setError('Không tìm thấy thông tin người dùng');
-          return;
-        }
-        client.subscribe(`/topic/student/${user.data.cic}`, (message) => {
-          const notification = JSON.parse(message.body);
-          console.log('Received personal notification:', notification);
-          handleAttendanceNotification(notification);
-        });
-        client.subscribe('/topic/attendance', (message) => {
-          const notification = JSON.parse(message.body);
-          console.log('Received general notification:', notification);
-          if (notification.studentCIC === user.data.cic) {
-            handleAttendanceNotification(notification);
+
+        // Subscribe to student's personal topic
+        stompClient.subscribe(`/topic/student/${user.data.cic}`, (message) => {
+          try {
+            const data = JSON.parse(message.body);
+            console.log('Received notification:', data);
+            handleWebSocketMessage(data);
+          } catch (err) {
+            console.error('Error parsing message:', err);
           }
         });
-        if (user.data.currentClass) {
-          client.subscribe(`/topic/class/${user.data.currentClass}`, (message) => {
-            const notification = JSON.parse(message.body);
-            console.log('Received class notification:', notification);
-            if (notification.studentCIC === user.data.cic) {
-              handleAttendanceNotification(notification);
-            }
-          });
-        }
-        client.send("/app/connect", {}, JSON.stringify({
-          studentCIC: user.data.cic,
-          timestamp: new Date().toISOString()
-        }));
-        client.send(`/app/subscribe/student/${user.data.cic}`, {}, JSON.stringify({
-          studentCIC: user.data.cic,
-          timestamp: new Date().toISOString()
-        }));
-        setStompClient(client);
-      }, (error) => {
-        console.error('WebSocket connection error:', error);
-        setIsConnected(false);
-        handleReconnect();
-      });
-      nativeSocket.onopen = () => console.log('WebSocket connection opened');
-      nativeSocket.onclose = (event) => {
-        console.error('WebSocket closed. Code:', event.code, 'Reason:', event.reason);
-        setIsConnected(false);
-        if (event.code !== 1000) handleReconnect();
       };
-      nativeSocket.onerror = (error) => {
-        console.error('WebSocket error:', error);
+
+      stompClient.onDisconnect = () => {
+        console.log('Disconnected');
         setIsConnected(false);
-        // handleReconnect();
       };
-    } catch (error) {
-      console.error('Failed to initialize WebSocket:', error);
+
+      stompClient.activate();
+      wsRef.current = stompClient;
+
+    } catch (err) {
+      console.error('Error initializing WebSocket:', err);
       setIsConnected(false);
-      handleReconnect();
     }
-  }, [user, isOpen, handleAttendanceNotification]);
+  }, [user?.data?.cic, WS_URL]);
 
-  // Cleanup function
-  const disconnectWebSocket = useCallback(() => {
-    if (stompClient && stompClient.connected) {
-      try {
-        // Send disconnect message
-        stompClient.send("/app/disconnect", {}, JSON.stringify({
-          studentCIC: user.data.cic,
-          timestamp: new Date().toISOString()
-        }));
+  // Stop camera
+  const stopCamera = useCallback(() => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsScanning(false);
 
-        // Disconnect
-        stompClient.disconnect(() => {
-          console.log('WebSocket disconnected');
-          setIsConnected(false);
-          setStompClient(null);
-        });
-      } catch (error) {
-        console.error('Error disconnecting WebSocket:', error);
+    if (scanningIntervalRef.current) {
+      clearInterval(scanningIntervalRef.current);
+      scanningIntervalRef.current = null;
+    }
+  }, []);
+
+  const handleWebSocketMessage = useCallback((data) => {
+    if (data.type === 'ATTENDANCE_SUCCESS') {
+      attendanceStatusRef.current = 'checked';
+      setAttendanceStatus('checked');
+      setSuccess(data.message || 'Điểm danh thành công!');
+      setLoading(false);
+      setError('');
+      stopCamera();
+
+      // Auto close after 3 seconds on success
+      setTimeout(() => {
+        onClose();
+      }, 3000);
+    } else if (data.type === 'ATTENDANCE_FAILED') {
+      attendanceStatusRef.current = 'not_checked';
+      setAttendanceStatus('not_checked');
+      setError(data.message || 'Điểm danh thất bại!');
+      setLoading(false);
+      setSuccess('');
+      stopCamera();
+    } else if (data.type === 'SUBSCRIPTION_ACK') {
+      console.log('Subscribed to notifications successfully');
+    }
+  }, [onClose, stopCamera]);
+
+  const reconnectWebSocket = useCallback(() => {
+    console.log('🔄 Attempting to reconnect WebSocket...');
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    setTimeout(() => {
+      initWebSocket();
+    }, 1000);
+  }, [initWebSocket]);
+
+  // Get user location
+  const getCurrentLocation = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported by this browser'));
+        return;
       }
-    }
-  }, [stompClient, user]);
 
-  // Kiểm tra trạng thái điểm danh
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString()
+          };
+          setCurrentLocation(coords);
+          resolve(coords);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          reject(error);
+        },
+        options
+      );
+    });
+  }, []);
+
+  // Check attendance status first
   const checkAttendanceStatus = useCallback(async () => {
     if (!classInfo || !user) return;
 
@@ -161,237 +166,146 @@ const QRScanner = ({ isOpen, onClose, classInfo }) => {
       setLoading(true);
 
       // Gọi API để kiểm tra trạng thái điểm danh
-      const response = await api.get(`/attendances/status?studentCIC=${user.cic}&classCode=${classInfo.classCode}&date=${classInfo.date}`);
+      const response = await api.get(`/attendances/status?studentCIC=${user.data.cic}&scheduleId=${classInfo.scheduleId}&date=${classInfo.date}`);
 
-      if (response.data && response.data.success) {
-        if (response.data.data.hasAttended) {
-          setAttendanceStatus('checked');
-          setSuccess('Bạn đã điểm danh cho lớp này rồi!');
-        } else {
-          setAttendanceStatus('not_checked');
-        }
-      } else {
-        setAttendanceStatus('not_checked');
+      if (response.data && response.data.message === 'Đã điểm danh') {
+        setAttendanceStatus('checked');
+        setLoading(false);
+        setSuccess('Bạn đã điểm danh rồi!');
+        return;
       }
     } catch (err) {
       console.error('Error checking attendance status:', err);
-      setAttendanceStatus('not_checked'); // Cho phép tiếp tục nếu không check được
-    } finally {
-      setLoading(false);
     }
   }, [classInfo, user]);
 
-  // Khởi động camera
+  // Start camera
   const startCamera = useCallback(async () => {
-    if (attendanceStatus === 'checked') {
-      return;
-    }
-
     try {
-      setError(null);
+      setError('');
       setLoading(true);
 
-      // Kiểm tra hỗ trợ getUserMedia
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Trình duyệt không hỗ trợ camera');
+      checkAttendanceStatus();
+
+      setAttendanceStatus('not_checked');
+      console.log('attendanceStatus after check:', attendanceStatus);
+
+      // Get user location
+      try {
+        await getCurrentLocation();
+      } catch (locationError) {
+        console.warn('Could not get location:', locationError);
+        // Continue without location
+        setCurrentLocation({ latitude: '0', longitude: '0' });
       }
 
-      // Yêu cầu quyền truy cập camera với fallback options
-      const constraints = {
+      // Request camera permission
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: 'environment' }, // Sử dụng ideal thay vì exact
+          facingMode: 'environment', // Use back camera if available
           width: { ideal: 1280, max: 1920 },
           height: { ideal: 720, max: 1080 }
         }
-      };
-
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (err) {
-        // Fallback với constraints đơn giản hơn
-        console.warn('Fallback to basic camera constraints:', err);
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      }
-
-      streamRef.current = stream;
+      });
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setCameraPermission('granted');
+        setIsScanning(true);
+        setLoading(false);
 
-        const trackSettings = stream.getVideoTracks()[0]?.getSettings();
-        const facing = trackSettings?.facingMode || 'unknown';
-
-        // Nếu là cam trước (user) → lật lại ảnh để không bị ngược
-        if (facing === 'user') {
-          videoRef.current.style.transform = 'scaleX(-1)';
-        } else {
-          videoRef.current.style.transform = 'none';
-        }
-
-        // Đợi video load
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('Video load timeout'));
-          }, 5000);
-
-          videoRef.current.onloadedmetadata = () => {
-            clearTimeout(timeout);
-            resolve();
-          };
-
-          videoRef.current.onerror = () => {
-            clearTimeout(timeout);
-            reject(new Error('Video load error'));
-          };
-        });
-
-        await videoRef.current.play();
+        // Start QR scanning
+        startQRScanning();
       }
-
-      setCameraPermission('granted');
-      setIsScanning(true);
-      setLoading(false);
-
-      // Bắt đầu quét QR
-      startScanning();
-
     } catch (err) {
       console.error('Error starting camera:', err);
-      setCameraPermission('denied');
-      setLoading(false);
-
-      let errorMessage = 'Không thể khởi động camera';
-
       if (err.name === 'NotAllowedError') {
-        errorMessage = 'Vui lòng cho phép truy cập camera để quét QR code';
+        setCameraPermission('denied');
+        setError('Cần quyền truy cập camera để quét QR code');
       } else if (err.name === 'NotFoundError') {
-        errorMessage = 'Không tìm thấy camera trên thiết bị';
-      } else if (err.name === 'NotReadableError') {
-        errorMessage = 'Camera đang được sử dụng bởi ứng dụng khác';
-      } else if (err.name === 'OverconstrainedError') {
-        errorMessage = 'Camera không hỗ trợ cấu hình yêu cầu';
+        setError('Không tìm thấy camera');
       } else {
-        errorMessage = errorMessage + ': ' + err.message;
+        setError('Không thể khởi động camera: ' + err.message);
       }
-
-      setError(errorMessage);
+      setLoading(false);
+      setIsScanning(false);
     }
-  }, [attendanceStatus]);
+  }, [classInfo, user?.data?.cic, getCurrentLocation]);
 
-  // Dừng camera
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
+  // Start QR scanning
+  const startQRScanning = useCallback(() => {
+    if (scanningIntervalRef.current) {
+      clearInterval(scanningIntervalRef.current);
     }
 
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
-    }
+    scanningIntervalRef.current = setInterval(() => {
+      if (videoRef.current && canvasRef.current && videoRef.current.readyState === 4) {
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        const context = canvas.getContext('2d');
 
-    setIsScanning(false);
-    setCameraPermission(null);
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        try {
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+          if (code) {
+            console.log('QR Code detected:', code.data);
+            handleQRCodeDetected(code.data);
+          }
+        } catch (err) {
+          console.error('Error scanning QR code:', err);
+        }
+      }
+    }, 300); // Scan every 300ms
   }, []);
 
-  // Bắt đầu quét QR code 
-  const startScanning = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) {
-      console.error('Missing required elements for scanning');
+  // Handle QR code detection
+  const handleQRCodeDetected = useCallback(async (qrData) => {
+    if (loading || attendanceStatusRef.current === 'waiting' || attendanceStatusRef.current === 'checked') {
+      console.log('Skipping QR detection - current status:', attendanceStatusRef.current);
       return;
     }
 
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-
-    // Fix Canvas warning bằng cách set attribute trực tiếp
     try {
-      if (canvas.willReadFrequently !== undefined) {
-        canvas.willReadFrequently = true;
-      }
-    } catch (e) {
-      console.warn('willReadFrequently not supported:', e);
-    }
-
-    scanIntervalRef.current = setInterval(async () => {
-      try {
-        const video = videoRef.current;
-
-        if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
-
-        // Tối ưu kích thước canvas
-        const videoWidth = video.videoWidth;
-        const videoHeight = video.videoHeight;
-
-        if (videoWidth === 0 || videoHeight === 0) return;
-
-        // Chỉ resize canvas khi cần thiết
-        if (canvas.width !== videoWidth || canvas.height !== videoHeight) {
-          canvas.width = videoWidth;
-          canvas.height = videoHeight;
-        }
-
-        context.drawImage(video, 0, 0, videoWidth, videoHeight);
-
-        const imageData = context.getImageData(0, 0, videoWidth, videoHeight);
-
-        // Decode QR code với jsQR đã import
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        });
-
-        if (code && code.data) {
-          console.log('QR Code detected:', code.data);
-          setIsScanning(false);
-          clearInterval(scanIntervalRef.current);
-          scanIntervalRef.current = null;
-          await handleQRDetected(code.data);
-        }
-
-      } catch (err) {
-        console.error('Error scanning QR:', err);
-      }
-    }, 150); // 150ms interval để balance performance
-  }, []);
-
-  // Hàm lấy vị trí
-  const getCurrentLocation = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Trình duyệt không hỗ trợ định vị'));
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords = {
-            latitude: parseFloat(position.coords.latitude.toFixed(6)),
-            longitude: parseFloat(position.coords.longitude.toFixed(6))
-          };
-          setLocation(coords);
-          resolve(coords);
-        },
-        (error) => {
-          console.warn('Geolocation error:', error);
-          reject(error);
-        }
-      );
-    });
-  };
-
-  // Xử lý khi phát hiện QR code - SỬA ĐỔI ĐỂ DÙNG WEBSOCKET
-  const handleQRDetected = useCallback(async (qrData) => {
-    try {
+      attendanceStatusRef.current = 'waiting';
+      setAttendanceStatus('waiting');
       setLoading(true);
-      setError(null);
+      setError('');
+      setSuccess('');
 
-      console.log('Processing QR data:', qrData);
+      if (!wsRef.current || !wsRef.current.connected) {
+        console.log('WebSocket not connected, reconnecting...');
+        initWebSocket();
+      }
 
-      // Parse QR data
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('📝 Attendance status should be waiting now');
+
+      // Stop scanning temporarily
+      if (scanningIntervalRef.current) {
+        clearInterval(scanningIntervalRef.current);
+        scanningIntervalRef.current = null;
+      }
+
+      // Use current location or get it again
+      let coords = currentLocation;
+      if (!coords) {
+        try {
+          coords = await getCurrentLocation();
+        } catch (locationError) {
+          console.warn('Using default location due to error:', locationError);
+          coords = { latitude: '0', longitude: '0' };
+        }
+      }
+
+      //Parse QR data
       let qrSignature;
       if (qrData.startsWith('http') && qrData.includes('signature=')) {
         const url = new URL(qrData);
@@ -411,14 +325,7 @@ const QRScanner = ({ isOpen, onClose, classInfo }) => {
         }
       }
 
-      // Get location
-      let coords;
-      try {
-        coords = await getCurrentLocation();
-      } catch (locationErr) {
-        throw new Error('Không thể lấy vị trí hiện tại');
-      }
-
+      // Prepare attendance data
       const attendanceData = {
         qrSignature: qrSignature,
         studentCIC: user.data.cic,
@@ -427,86 +334,81 @@ const QRScanner = ({ isOpen, onClose, classInfo }) => {
         longitude: coords.longitude,
       };
 
-      console.log('Sending attendance data:', attendanceData);
+      console.log('Submitting attendance:', attendanceData);
 
-      // Gửi request và đợi notification qua WebSocket
+      // Submit attendance
       const response = await api.post('/attendances', attendanceData);
+      console.log('📡 Attendance API response:', response.status);
+      console.log('WebSocket connection status:', isConnected ? 'Connected' : 'Disconnected');
 
       if (response.status === 202) {
-        // Request được accept, đợi notification qua WebSocket
         console.log('Attendance request accepted, waiting for WebSocket notification...');
-        // setLoading sẽ được set false khi nhận notification
       } else {
         throw new Error('Unexpected response status');
       }
 
+      // The response will come via WebSocket, so we just wait
+      console.log('Attendance submitted, waiting for WebSocket response...');
+
     } catch (err) {
-      console.error('Error processing QR:', err);
-      setError(err.message || 'Có lỗi xảy ra khi điểm danh');
+      console.error('Error submitting attendance:', err);
+      attendanceStatusRef.current = 'not_checked';
+      setAttendanceStatus('not_checked');
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi điểm danh');
       setLoading(false);
 
-      // Retry after 3 seconds
+      // Restart scanning after error
       setTimeout(() => {
-        if (isOpen && cameraPermission === 'granted' && attendanceStatus !== 'checked') {
-          setError(null);
-          setIsScanning(true);
-          startScanning();
+        if (isScanning) {
+          startQRScanning();
         }
-      }, 3000);
+      }, 2000);
     }
-  }, [user, isOpen, cameraPermission, attendanceStatus, startScanning]);
+  }, [loading, attendanceStatus, currentLocation, user?.data?.cic, getCurrentLocation, isScanning, startQRScanning, initWebSocket]);
 
-  // Effect để connect/disconnect WebSocket
-  useEffect(() => {
-    if (isOpen && attendanceStatus === 'not_checked') {
-      connectWebSocket();
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    stopCamera();
+
+    if (wsRef.current) {
+      wsRef.current.deactivate();
+      wsRef.current = null;
     }
 
-    return () => {
-      if (!isOpen) {
-        disconnectWebSocket();
-      }
-    };
-  }, [isOpen, attendanceStatus, connectWebSocket, disconnectWebSocket]);
+    if (locationWatchRef.current) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+      locationWatchRef.current = null;
+    }
+    attendanceStatusRef.current = 'not_checked';
+  }, [stopCamera]);
 
-  // Kiểm tra trạng thái điểm danh khi mở modal
+  // Initialize when component opens
   useEffect(() => {
     if (isOpen) {
-      checkAttendanceStatus();
+      setAttendanceStatus('not_checked');
+      setError('');
+      setSuccess('');
+      setLoading(false);
+
+      // Initialize WebSocket
+      initWebSocket();
+
+      // Start camera
+      setTimeout(() => {
+        startCamera();
+      }, 100);
     } else {
-      stopCamera();
-      disconnectWebSocket();
-      // Reset states when closing
-      setAttendanceStatus(null);
-      setSuccess(null);
-      setError(null);
+      cleanup();
     }
 
-    return () => {
-      if (!isOpen) {
-        stopCamera();
-        disconnectWebSocket();
-      }
-    };
-  }, [isOpen, checkAttendanceStatus, stopCamera, disconnectWebSocket]);
+    return cleanup;
+  }, [isOpen, initWebSocket, startCamera, cleanup]);
 
-  // Khởi động camera sau khi check attendance status
-  useEffect(() => {
-    if (isOpen && attendanceStatus === 'not_checked') {
-      startCamera();
-    } else if (attendanceStatus === 'checked') {
-      // Không khởi động camera nếu đã điểm danh
-      stopCamera();
-    }
-  }, [isOpen, attendanceStatus, startCamera, stopCamera]);
-
-  // Cleanup khi component unmount
-  useEffect(() => {
-    return () => {
-      stopCamera();
-      disconnectWebSocket();
-    };
-  }, [stopCamera, disconnectWebSocket]);
+  // Handle close
+  const handleClose = useCallback(() => {
+    cleanup();
+    onClose();
+  }, [cleanup, onClose]);
 
   if (!isOpen) return null;
 
@@ -515,7 +417,7 @@ const QRScanner = ({ isOpen, onClose, classInfo }) => {
       <div className="qr-scanner-modal">
         <div className="qr-scanner-header">
           <h3>Quét QR Code Điểm Danh</h3>
-          <button className="close-button" onClick={onClose} disabled={loading}>
+          <button className="close-button" onClick={handleClose} disabled={loading}>
             ✕
           </button>
         </div>
@@ -546,10 +448,10 @@ const QRScanner = ({ isOpen, onClose, classInfo }) => {
               </div>
             )}
 
-            {loading && attendanceStatus !== 'loading' && (
+            {loading && (attendanceStatus === 'loading' || attendanceStatus === 'waiting') && (
               <div className="camera-loading">
                 <div className="spinner"></div>
-                <p>Đang xử lý điểm danh...</p>
+                <p>{attendanceStatus === 'loading' ? 'Đang kiểm tra trạng thái điểm danh...' : 'Đang xử lý điểm danh...'}</p>
               </div>
             )}
 
@@ -618,7 +520,7 @@ const QRScanner = ({ isOpen, onClose, classInfo }) => {
           <div className="scanner-controls">
             <button
               className="control-button cancel"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={loading}
             >
               {attendanceStatus === 'checked' ? 'Đóng' : 'Hủy'}

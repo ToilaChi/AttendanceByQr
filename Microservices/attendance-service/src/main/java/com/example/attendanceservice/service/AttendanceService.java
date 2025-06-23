@@ -90,6 +90,7 @@ public class AttendanceService {
     //Kiểm tra xem có điểm danh 2 lần không
     boolean alreadyCheckIn = attendanceRepository.existsByStudentCicAndScheduleIdAndDateRange(
             studentCIC, qrSession.getScheduleId(), startOfDay, startOfNextDay);
+    System.out.println("Already check in? " + alreadyCheckIn);
     if(alreadyCheckIn) {
       String message = "Bạn đã điểm danh trước đó rồi";
       //Publish failed event
@@ -132,7 +133,7 @@ public class AttendanceService {
           messageBuilder.append("[KHÁC CA HỌC]");
         }
         messageBuilder.append("Schedule ").append(scheduleId)
-                .append(": ").append(String.join(", "))
+                .append(": ").append(String.join(", ", students))
                 .append("; ");
       }
       String message = messageBuilder + "Nghi ngờ điểm danh hộ, nếu có nhầm lẫn hãy thông báo với giảng viên";
@@ -167,12 +168,12 @@ public class AttendanceService {
   }
 
   @Transactional(readOnly = true)
-  public AttendanceResponse checkAttendanceStatus(String studentCIC, String classCode, String date) {
+  public AttendanceResponse checkAttendanceStatus(String studentCIC, int scheduleId, String date) {
     try {
       // Gọi class-service để lấy schedule của ngày đó
       LocalDate targetDate = LocalDate.parse(date);
       ApiResponse<List<ScheduleResponse>> response =
-              classServiceClient.getStudentSchedule(classCode, targetDate);
+              classServiceClient.getStudentSchedule(studentCIC, targetDate);
 
       if (response == null || response.getData().isEmpty()) {
         return new AttendanceResponse("Không tìm thấy lịch học", false);
@@ -181,9 +182,13 @@ public class AttendanceService {
       ScheduleResponse schedule = response.getData().get(0);
 
       // Kiểm tra xem sinh viên đã điểm danh chưa
-      boolean hasAttended = attendanceRepository.existsByStudentCICAndScheduleId(
-              studentCIC, schedule.getScheduleId());
+      LocalDateTime now = LocalDateTime.now();
+      LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
+      LocalDateTime startOfNextDay = startOfDay.plusDays(1);
+      boolean hasAttended = attendanceRepository.existsByStudentCicAndScheduleIdAndDateRange(
+              studentCIC, scheduleId, startOfDay, startOfNextDay);
 
+      System.out.println("Check " + hasAttended);
       String message = hasAttended ? "Đã điểm danh" : "Chưa điểm danh";
 
       return new AttendanceResponse(message, true);

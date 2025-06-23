@@ -18,9 +18,13 @@ public class WebSocketNotificationService {
     String destination = "/topic/student/" + studentCIC;
     try {
       // Log chi tiết message để debug
-      log.info("Sending to destination: {}", destination);
-      log.info("Message content: type={}, message={}, studentCIC={}",
+      log.info("🚀 Preparing to send notification to: {}", destination);
+      log.info("📝 Message details: type={}, message={}, studentCIC={}",
               message.getType(), message.getMessage(), message.getStudentCIC());
+
+      // Kiểm tra xem có client nào subscribe không
+      log.info("📡 Active WebSocket sessions: {}",
+              messagingTemplate.getDefaultDestination());
 
       messagingTemplate.convertAndSend(destination, message);
       log.info("✅ Sent notification to student {}: {}", studentCIC, message.getMessage());

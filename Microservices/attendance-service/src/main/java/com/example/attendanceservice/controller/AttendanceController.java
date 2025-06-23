@@ -22,10 +22,10 @@ public class AttendanceController {
   @GetMapping("/status")
   public ResponseEntity<AttendanceResponse> checkAttendanceStatus(
           @RequestParam String studentCIC,
-          @RequestParam String classCode,
+          @RequestParam int scheduleId,
           @RequestParam String date) {
 
-    AttendanceResponse response = attendanceService.checkAttendanceStatus(studentCIC, classCode, date);
+    AttendanceResponse response = attendanceService.checkAttendanceStatus(studentCIC, scheduleId, date);
     return ResponseEntity.ok(response);
   }
 }
