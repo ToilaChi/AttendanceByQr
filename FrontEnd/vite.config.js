@@ -24,7 +24,11 @@ export default defineConfig({
       '172.20.10.6',
       '.ngrok-free.app',
       '.ngrok.io'
-    ]
+    ],
+    https: {
+      key: fs.readFileSync('./key.pem'),        // Đường dẫn từ root
+      cert: fs.readFileSync('./cert.pem'),      // Đường dẫn từ root
+    }
   },
   define: {
     global: 'window'

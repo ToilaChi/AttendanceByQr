@@ -44,7 +44,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
     registry.addEndpoint("/ws-notifications")
-            .setAllowedOrigins("http://localhost:5173", "https://talented-rare-iguana.ngrok-free.app")
+            .setAllowedOrigins(
+                    "http://localhost:5173",
+                    "https://talented-rare-iguana.ngrok-free.app",
+                    "https://192.168.1.4:5173",
+                    "https://192.168.114.246:5173",
+                    "https://192.168.174.246:5173"
+            )
             .addInterceptors(new WebSocketAuthInterceptor());
     System.out.println("Registered endpoints");
   }

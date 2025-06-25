@@ -10,6 +10,7 @@ import com.example.attendanceservice.redis.RedisService;
 import com.example.attendanceservice.repository.AttendanceRepository;
 import com.example.classservice.dto.ScheduleResponse;
 import com.example.classservice.util.ApiResponse;
+import com.example.attendanceservice.util.IPUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,14 +28,15 @@ import java.util.stream.Collectors;
 public class AttendanceService {
   private final RedisService qrRedisService;
   private final AttendanceRepository attendanceRepository;
-  private final HttpServletRequest httpServletRequest;
   private final ClassServiceClient classServiceClient;
   private final NatsPublisherService natsPublisherService;
 
   @Transactional
-  public void checkIn(AttendanceRequest attendanceRequest) {
+  public void checkIn(AttendanceRequest attendanceRequest, HttpServletRequest request) {
     String studentCIC =  attendanceRequest.getStudentCIC();
     LocalDateTime now = LocalDateTime.now();
+
+
     // Lấy qr từ redis
     RedisQrSession qrSession = qrRedisService.getQrSession(attendanceRequest.getQrSignature());
     if (qrSession == null) {
@@ -59,13 +61,9 @@ public class AttendanceService {
 
     //Gọi class-service để kiểm tra sinh viên
     try {
-      System.out.println("Class Code 0: "  + qrSession.getClassCode());
       ResponseEntity<ApiResponse<Boolean>> response = classServiceClient.checkStudentEnrollment(studentCIC, qrSession.getClassCode());
       ApiResponse<Boolean> body = response.getBody();
-      System.out.println("Response: " + response);
-      System.out.println("Body: " + body);
       if (body == null || Boolean.FALSE.equals(body.getData())) {
-        System.out.println("Class Code 1: "  + qrSession.getClassCode());
         String message = "Bạn không thuộc lớp này!!!";
         //Publish failed event
         AttendanceEvent failedEvent = new AttendanceEvent(
@@ -75,8 +73,32 @@ public class AttendanceService {
         return;
       }
     } catch (Exception e) {
-      System.out.println("Class Code 2: "  + qrSession.getClassCode());
       String message = "Không thể kiểm tra lớp học. Vui lòng thử lại sau.";
+      //Publish failed event
+      AttendanceEvent failedEvent = new AttendanceEvent(
+              studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now, message
+      );
+      natsPublisherService.publishAttendanceFailed(failedEvent);
+      return;
+    }
+
+    //Kiểm tra thông tin thiết bị
+    String device = attendanceRequest.getDeviceInfo();
+    if(device.isEmpty() || device.equals("Unknown Device")) {
+      String message = "Bạn phải cung cấp thông tin thiết bị";
+      //Publish failed event
+      AttendanceEvent failedEvent = new AttendanceEvent(
+              studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now, message
+      );
+      natsPublisherService.publishAttendanceFailed(failedEvent);
+      return;
+    }
+
+    //Kiểm tra vị trí
+    Double latitude = attendanceRequest.getLatitude();
+    Double longitude = attendanceRequest.getLongitude();
+    if(latitude == null || longitude == null) {
+      String message = "Bạn phải cung cấp vị trí của mình";
       //Publish failed event
       AttendanceEvent failedEvent = new AttendanceEvent(
               studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now, message
@@ -90,7 +112,6 @@ public class AttendanceService {
     //Kiểm tra xem có điểm danh 2 lần không
     boolean alreadyCheckIn = attendanceRepository.existsByStudentCicAndScheduleIdAndDateRange(
             studentCIC, qrSession.getScheduleId(), startOfDay, startOfNextDay);
-    System.out.println("Already check in? " + alreadyCheckIn);
     if(alreadyCheckIn) {
       String message = "Bạn đã điểm danh trước đó rồi";
       //Publish failed event
@@ -101,12 +122,10 @@ public class AttendanceService {
       return;
     }
 
-    //Lấy ip client
-    String ipAddress = extractClientIp();
-
+    String clientIP = IPUtils.getClientIP(request);
     //Kiểm tra điểm danh hộ
     List<Attendance> sameDeviceAttendances = attendanceRepository.findByIpAndDeviceAndDateRange(
-            ipAddress, attendanceRequest.getDeviceInfo(), startOfDay, startOfNextDay);
+            clientIP, attendanceRequest.getDeviceInfo(), startOfDay, startOfNextDay);
 
     List<Attendance> suspiciousAttendances = sameDeviceAttendances.stream()
             .filter(a -> !a.getStudentCIC().equals(studentCIC))
@@ -150,7 +169,7 @@ public class AttendanceService {
     attendance.setStudentCIC(studentCIC);
     attendance.setScheduleId(qrSession.getScheduleId());
     attendance.setTimestamp(now);
-    attendance.setIpAddress(ipAddress);
+    attendance.setIpAddress(clientIP);
     attendance.setDeviceInfo(attendanceRequest.getDeviceInfo());
     attendance.setLatitude(attendanceRequest.getLatitude());
     attendance.setLongtitude(attendanceRequest.getLongitude());
@@ -161,7 +180,7 @@ public class AttendanceService {
     String successMessage = "Bạn đã điểm danh thành công!!!";
     AttendanceEvent successEvent = new AttendanceEvent(
             studentCIC, (long) qrSession.getScheduleId(), qrSession.getClassCode(), now,
-            successMessage, ipAddress, attendanceRequest.getDeviceInfo(),
+            successMessage, clientIP, attendanceRequest.getDeviceInfo(),
             attendanceRequest.getLatitude(), attendanceRequest.getLongitude()
     );
     natsPublisherService.publishAttendanceSuccess(successEvent);
@@ -179,8 +198,6 @@ public class AttendanceService {
         return new AttendanceResponse("Không tìm thấy lịch học", false);
       }
 
-      ScheduleResponse schedule = response.getData().get(0);
-
       // Kiểm tra xem sinh viên đã điểm danh chưa
       LocalDateTime now = LocalDateTime.now();
       LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
@@ -188,7 +205,6 @@ public class AttendanceService {
       boolean hasAttended = attendanceRepository.existsByStudentCicAndScheduleIdAndDateRange(
               studentCIC, scheduleId, startOfDay, startOfNextDay);
 
-      System.out.println("Check " + hasAttended);
       String message = hasAttended ? "Đã điểm danh" : "Chưa điểm danh";
 
       return new AttendanceResponse(message, true);
@@ -196,13 +212,5 @@ public class AttendanceService {
     } catch (Exception e) {
       return new AttendanceResponse("Không thể kiểm tra trạng thái điểm danh", false);
     }
-  }
-
-  private String extractClientIp() {
-    String xHeader =  httpServletRequest.getHeader("X-Forwarded-For");
-    if (xHeader == null) {
-      xHeader = httpServletRequest.getRemoteAddr();
-    }
-    return xHeader.split(",")[0];
   }
 }

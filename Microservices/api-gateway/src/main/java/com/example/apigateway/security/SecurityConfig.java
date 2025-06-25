@@ -36,10 +36,11 @@ public class SecurityConfig {
     config.setAllowCredentials(true);
 
     config.setAllowedOriginPatterns(List.of(
-            "http://localhost:5173",
-            "http://192.168.1.4:5173",
-            "http://192.168.161.1:5173",
-            "http://192.168.174.1:5173",
+            "https://localhost:5173",
+            "https://192.168.1.4:5173",
+            "https://192.168.161.1:5173",
+            "https://192.168.174.246:5173",
+            "https://192.168.114.246:5173",
             "https://talented-rare-iguana.ngrok-free.app"
     ));
 
