@@ -58,7 +58,7 @@ const Schedule = () => {
   // Time slots for the schedule
   const timeSlots = [
     { label: 'Sáng', periods: ['00:00 - 02:00', '06:45 - 09:15', '09:25 - 11:55'] },
-    { label: 'Chiều', periods: ['12:10 - 14:40', '14:50 - 17:20'] },
+    { label: 'Chiều', periods: ['12:00 - 14:40', '14:50 - 17:20'] },
     { label: 'Tối', periods: ['17:30 - 20:00', '20:30 - 23:55'] }
   ];
 
@@ -269,15 +269,6 @@ const Schedule = () => {
             <div className="room">Phòng: {classInfo.room}</div>
             <div className="time">Thời gian: {classInfo.startTime} - {classInfo.endTime}</div>
 
-            {/* Hiển thị trạng thái điểm danh nếu có */}
-            {classInfo.attendanceStatus && (
-              <div className={`attendance-status ${classInfo.attendanceStatus.toLowerCase()}`}>
-                {classInfo.attendanceStatus === 'PRESENT' && '✓ Đã điểm danh'}
-                {classInfo.attendanceStatus === 'ABSENT' && '✗ Vắng mặt'}
-                {classInfo.attendanceStatus === 'LATE' && '⏰ Muộn'}
-              </div>
-            )}
-
             {userRole === 'TEACHER' ? (
               <button
                 className={`qr-button ${canGenerate && !qrGenerating ? 'active' : 'disabled'}`}
@@ -295,16 +286,16 @@ const Schedule = () => {
               <button
                 className={`attendance-button ${attendanceStatus.canAttend ? 'active' : 'disabled'}`}
                 onClick={() => attendanceStatus.canAttend && handleAttendance(classInfo)}
-                disabled={!attendanceStatus.canAttend || classInfo.attendanceStatus === 'PRESENT'}
+                disabled={!attendanceStatus.canAttend || classInfo.attendanceStatus === 'checked'}
                 title={
-                  classInfo.attendanceStatus === 'PRESENT'
+                  classInfo.attendanceStatus === 'checked'
                     ? 'Đã điểm danh'
                     : !attendanceStatus.canAttend
                       ? attendanceStatus.reason
                       : 'Nhấn để điểm danh'
                 }
               >
-                {classInfo.attendanceStatus === 'PRESENT' ? '✓ Đã điểm danh' : '📍 Điểm danh'}
+                {classInfo.attendanceStatus === 'checked' ? '✓ Đã điểm danh' : '📍 Điểm danh'}
               </button>
             )}
           </div>

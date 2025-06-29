@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AttendanceRequest {
+public class QRRequest {
   private String qrSignature;
   private String studentCIC;
   private String deviceInfo;

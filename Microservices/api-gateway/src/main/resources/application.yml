@@ -33,6 +33,7 @@ spring:
       discovery:
         locator:
           enabled: true
+          lower-case-service-id: true
       routes:
         - id: auth-route
           uri: lb://auth-service
@@ -64,6 +65,10 @@ spring:
             - Path=/notifications/**
           filters:
             - RewritePath=/notifications/(?<segment>.*), /$\{segment}
+        - id: face-route
+          uri: lb://face-service
+          predicates:
+            - Path=/face/**
       global-filter:
         websocket-routing:
           enabled: true

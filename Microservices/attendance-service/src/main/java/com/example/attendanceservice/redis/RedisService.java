@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -48,5 +50,40 @@ public class RedisService {
 
   public void deleteQrSession(String qrSignature) {
     redisTemplate.delete("qr:" + qrSignature);
+  }
+
+  public String get(String key) {
+    return redisTemplate.opsForValue().get(key);
+  }
+
+  public void setWithExpiry(String key, String value, long ttlSeconds) {
+    redisTemplate.opsForValue().set(key, value, Duration.ofSeconds(ttlSeconds));
+  }
+
+  public void delete(String key) {
+    redisTemplate.delete(key);
+  }
+
+  public Long addToSet(String key, String value) {
+    try {
+      return redisTemplate.opsForSet().add(key, value);
+    } catch (Exception e) {
+      return 0L;
+    }
+  }
+  public Set<String> getSetMembers(String key) {
+    try {
+      Set<String> members = redisTemplate.opsForSet().members(key);
+      return members != null ? members : new HashSet<>();
+    } catch (Exception e) {
+      return new HashSet<>();
+    }
+  }
+  public Long removeFromSet(String key, String value) {
+    try {
+      return redisTemplate.opsForSet().remove(key, value);
+    } catch (Exception e) {
+      return 0L;
+    }
   }
 }

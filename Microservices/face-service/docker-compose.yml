@@ -1,0 +1,21 @@
+# services:
+#   face-service:
+#     build: .
+#     ports:
+#       - "8086:8086"
+#     environment:
+#       # Use Supabase database like your attendance-service
+#       - DATABASE_URL=postgresql://postgres:Minhtri@123@db.nzxeumzixerxyzdlscjz.supabase.co:5432/postgres?currentSchema=face_db
+#       - DATABASE_SCHEMA=face_db
+#       # Connect to existing NATS and Redis (change these IPs to your actual NATS/Redis servers)
+#       - NATS_URL=nats://host.docker.internal:4222
+#       - REDIS_HOST=host.docker.internal
+#       - REDIS_PORT=6379
+#     extra_hosts:
+#       - "host.docker.internal:host-gateway"
+#     networks:
+#       - face-network
+
+# networks:
+#   face-network:
+#     driver: bridge

@@ -28,6 +28,7 @@
     opacity: 0;
     transform: translateY(50px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -48,6 +49,36 @@
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+}
+
+.face-frame {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 20px;
+}
+
+.face-circle {
+  width: 100%;
+  height: 100%;
+  border: 3px solid #00ff00;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+  }
+
+  100% {
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+  }
 }
 
 .close-button {
@@ -128,23 +159,121 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .camera-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #ef4444;
   text-align: center;
+  /* background: rgba(0, 0, 0, 0.8); */
   padding: 20px;
+  z-index: 10;
+  font-weight: 600;
+}
+
+.camera-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10;
 }
 
 .camera-error p {
   margin-bottom: 16px;
   font-size: 14px;
+}
+
+.camera-temp-success {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 15;
+  animation: fadeInOut 1s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.temp-success-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #10b981;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  animation: successBounce 0.6s ease-out;
+}
+
+@keyframes successBounce {
+  0% {
+    transform: scale(0.3);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.temp-success-text {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .retry-button {
@@ -163,12 +292,20 @@
 }
 
 .camera-success {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #10b981;
   text-align: center;
+  font-weight: 600;
+  /* background: rgba(0, 0, 0, 0.8); */
+  z-index: 10;
 }
 
 .success-icon {
@@ -191,9 +328,11 @@
     transform: scale(0.8);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.1);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -207,6 +346,10 @@
   display: none;
 }
 
+.camera-video.front-camera {
+  transform: scaleX(-1);
+}
+
 .camera-video.active {
   display: block;
 }
@@ -215,6 +358,10 @@
   position: absolute;
   top: 0;
   left: 0;
+}
+
+.camera-canvas.front-camera {
+  transform: scaleX(-1);
 }
 
 .scan-overlay {
@@ -294,6 +441,7 @@
     transform: translateY(0);
     opacity: 1;
   }
+
   100% {
     transform: translateY(198px);
     opacity: 0;
@@ -351,16 +499,16 @@
     max-height: none;
     border-radius: 0;
   }
-  
+
   .camera-container {
     height: 250px;
   }
-  
+
   .scan-frame {
     width: 150px;
     height: 150px;
   }
-  
+
   .qr-scanner-body {
     padding: 16px;
   }
@@ -372,29 +520,29 @@
     background: #1f2937;
     color: white;
   }
-  
+
   .qr-scanner-header {
     border-bottom-color: #374151;
   }
-  
+
   .class-info-display {
     background: #374151;
     border-color: #4b5563;
   }
-  
+
   .class-info-display p {
     color: #d1d5db;
   }
-  
+
   .class-info-display strong {
     color: white;
   }
-  
+
   .control-button.cancel {
     background: #374151;
     color: #d1d5db;
   }
-  
+
   .control-button.cancel:hover:not(:disabled) {
     background: #4b5563;
   }

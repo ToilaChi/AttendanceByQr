@@ -21,7 +21,9 @@ class NatsPublisherService {
   private final Connection natsConnection;
   private ObjectMapper objectMapper;
 
-  private static final String ATTENDANCE_SUCCESS_SUBJECT = "attendance.checkin.success";
+  private static final String QR_SCAN_SUCCESS_SUBJECT = "qr.attendance.scan.success";
+  private static final String QR_SCAN_FAILED_SUBJECT = "qr.attendance.scan.failed";
+  private static final String ATTENDANCE_COMPLETED_SUBJECT = "attendance.checkin.success";
   private static final String ATTENDANCE_FAILED_SUBJECT = "attendance.checkin.failed";
 
   @PostConstruct
@@ -32,12 +34,20 @@ class NatsPublisherService {
     this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false); // Cấu hình thêm nếu cần
   }
 
-  void publishAttendanceFailed(AttendanceEvent attendanceEvent) {
-    publisherEvent(ATTENDANCE_FAILED_SUBJECT, attendanceEvent);
+  void publishQRScanFailed(AttendanceEvent attendanceEvent) {
+    publisherEvent(QR_SCAN_FAILED_SUBJECT, attendanceEvent);
   }
 
-  void  publishAttendanceSuccess(AttendanceEvent attendanceEvent) {
-    publisherEvent(ATTENDANCE_SUCCESS_SUBJECT, attendanceEvent);
+  void publishQRScanSuccess(AttendanceEvent attendanceEvent) {
+    publisherEvent(QR_SCAN_SUCCESS_SUBJECT, attendanceEvent);
+  }
+
+  void publishAttendanceCompleted(AttendanceEvent attendanceEvent) {
+    publisherEvent(ATTENDANCE_COMPLETED_SUBJECT, attendanceEvent);
+  }
+
+  void publishAttendanceFailed(AttendanceEvent attendanceEvent) {
+    publisherEvent(ATTENDANCE_FAILED_SUBJECT, attendanceEvent);
   }
 
   private void publisherEvent(String subject, AttendanceEvent event) {
